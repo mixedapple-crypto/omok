@@ -168,7 +168,14 @@ async function aiTurn() {
   updateHud();
 
   const t0 = performance.now();
-  const move = await requestMove(board.cells, board.turn);
+  let move = -1;
+  try {
+    move = await requestMove(board.cells, board.turn);
+  } catch (err) {
+    // AI가 실패해도 화면이 '생각하는 중…'에 영원히 갇히면 안 된다.
+    // 판을 못 이어가더라도 사용자가 무르기·다시하기를 할 수 있어야 한다.
+    console.error('[omok] AI 착수 실패:', err);
+  }
   const wait = Math.max(0, AI_MIN_DELAY_MS - (performance.now() - t0));
   if (wait) await sleep(wait);
 
@@ -194,7 +201,8 @@ function endGame() {
   let text;
 
   if (w === EMPTY) {
-    store.addResult('draw');
+    // 전적은 1인 대전의 것이다 — 둘이 하기 결과를 섞으면 아이의 기록이 아니게 된다.
+    if (mode === 'solo') store.addResult('draw');
     emoji = '🤝';
     text = '비겼어요';
   } else if (mode === 'duo') {

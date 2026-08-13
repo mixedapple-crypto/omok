@@ -46,6 +46,7 @@ node tests/board.test.js    2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-bo
 node tests/patterns.test.js 2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-patterns-result.txt
 node tests/ai.test.js       2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-ai-result.txt
 node tests/render.test.js   2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-render-result.txt
+node tests/wiring.test.js   2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-wiring-result.txt
 ```
 
 ⚠️ `Tee-Object`에 `Select-Object -First N`을 이어 붙이지 말 것 — 파이프가 끊겨 결과 파일이 잘린 채 저장된다(실측된 함정). 파일로 받은 뒤 따로 읽는다.
@@ -57,6 +58,8 @@ node tests/render.test.js   2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-re
 - patterns: **경계 접촉 3**(0행의 3을 열린3으로 오분류하는 버그) · 끊어진 패턴(`●●.●`) · 양쪽 막힌 4는 위협 아님 · 등급 순서 전부 통과
 - ai: 하드 규칙 우선순위(**이길 수 있으면 막지 않고 이긴다**) · 쉬움의 결정론적 핸디캡 · 쌍삼 인식
 - render: **DPR 1·2·3·4에서 터치 판정 동일**(그리기 좌표계와 터치 좌표계가 섞이면 여기서 걸린다) · 225 교차점 왕복
+- wiring: HTML의 모든 `data-action`에 핸들러가 있고, `ui.js`가 찾는 id가 전부 존재하는가.
+  **버튼이 아무 반응도 안 하는 종류의 결함은 브라우저 없이 문자열 대조만으로 잡힌다** — L3을 못 할 때 특히 중요하다.
 
 **FAIL이 1건이라도 있으면 출력 원문을 그대로 인용해 보고하고 여기서 중단한다.** L2로 넘어가지 않는다.
 

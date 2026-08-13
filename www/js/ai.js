@@ -45,6 +45,14 @@ const VCF_DEPTH = 8;
 /** VCF 노드 상한. 분기가 작아 보통 수백 노드로 끝나지만, 병적인 국면에서의 폭주를 막는다. */
 const VCF_NODE_LIMIT = 20000;
 
+/** 전체 사고 시간 중 VCF(공격+수비)에 쓸 몫. 나머지는 일반 탐색이 쓴다. */
+const VCF_TIME_SHARE = 0.35;
+
+/** 테스트에서 findVcf를 직접 부를 때 쓰는 기본 컨텍스트. */
+export function newVcfCtx(deadline = Date.now() + 5000) {
+  return { nodes: 0, limit: VCF_NODE_LIMIT, deadline };
+}
+
 /**
  * 보통 난이도의 수비 가중치. 1보다 조금 크다.
  * 같은 등급이면 방어가 이겨야 한다 — 상대 열린3을 놔두고 내 열린3을 만들면
@@ -219,8 +227,11 @@ function fiveSpots(cells, me, cand) {
  *
  * @returns 이기는 첫 수, 없으면 -1
  */
-export function findVcf(cells, me, depth = VCF_DEPTH, ctx = { nodes: 0, limit: VCF_NODE_LIMIT }) {
+export function findVcf(cells, me, depth = VCF_DEPTH, ctx = newVcfCtx()) {
+  // 노드 상한과 시간 상한을 둘 다 건다. 노드 상한만으로는 한 노드가 비쌀 때
+  // 예산을 넘길 수 있고, 시간 상한만으로는 Date.now() 호출이 오히려 비용이 된다.
   if (++ctx.nodes > ctx.limit) return -1;
+  if ((ctx.nodes & 255) === 0 && Date.now() > ctx.deadline) { ctx.nodes = ctx.limit + 1; return -1; }
   const opp = opponent(me);
   const cand = candidates(cells);
 
@@ -379,8 +390,15 @@ export class AI {
 
     if (candidates(cells).length === 0) return -1;
 
+    const t0 = Date.now();
+    const vcfDeadline = t0 + this.timeMs * VCF_TIME_SHARE;
+    // 예산의 일부는 마지막 '지는 수인가' 확인용으로 남겨둔다.
+    // 안 남기면 그 확인이 항상 시간 초과로 무의미해진다.
+    const searchDeadline = t0 + this.timeMs * 0.8;
+    const hardDeadline = t0 + this.timeMs;
+
     // ① 내가 연속 4로 이길 수 있으면 그 수순을 시작한다.
-    const vcfCtx = { nodes: 0, limit: VCF_NODE_LIMIT };
+    const vcfCtx = newVcfCtx(vcfDeadline);
     const vcf = findVcf(cells, me, VCF_DEPTH, vcfCtx);
     if (vcf >= 0) {
       this.stats.depth = -1; // -1 = VCF로 결정
@@ -389,8 +407,9 @@ export class AI {
     }
 
     // ② 상대가 연속 4로 이길 수 있으면 그 시작점을 미리 막는다.
-    //    상대의 첫 수를 지워두는 것이 가장 값싼 저지책이다.
-    const oppCtx = { nodes: 0, limit: VCF_NODE_LIMIT };
+    //    상대의 첫 수를 지워두는 것이 가장 값싼 저지책이다. 완전한 방어는 아니지만
+    //    (다른 시작점이 남아 있을 수 있다) 아무것도 안 하는 것보다 낫다.
+    const oppCtx = newVcfCtx(vcfDeadline);
     const oppVcf = findVcf(cells, opponent(me), VCF_DEPTH, oppCtx);
     if (oppVcf >= 0) {
       this.stats.depth = -1;
@@ -400,12 +419,6 @@ export class AI {
 
     // 기본값은 '보통'의 판단이다. 탐색은 이걸 뒤집을 근거가 있을 때만 개입한다.
     const greedyMove = this._greedyBest(cells, me, DEFENSE_WEIGHT);
-
-    const t0 = Date.now();
-    // 예산의 4분의 1은 마지막 '지는 수인가' 확인용으로 남겨둔다.
-    // 안 남기면 그 확인이 항상 시간 초과로 무의미해진다.
-    const searchDeadline = t0 + this.timeMs * 0.75;
-    const hardDeadline = t0 + this.timeMs;
     const newCtx = (d, deadline) => ({
       deadline, timeout: false, nodes: 0,
       width: HARD_WIDTH, maxDepth: d, leafDefense: this.leafDefense,
