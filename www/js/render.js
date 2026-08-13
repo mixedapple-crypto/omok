@@ -14,6 +14,9 @@ const STAR_POINTS = [[3, 3], [3, 11], [11, 3], [11, 11], [7, 7]];
 /** DPR 상한. 3을 넘으면 눈에 보이는 화질 이득 없이 메모리·그리기 비용만 는다. */
 const MAX_DPR = 3;
 
+/** 판의 최대 크기. 태블릿·PC에서 판만 커지면 오히려 짚기 불편하다. */
+const MAX_BOARD_PX = 560;
+
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -24,9 +27,33 @@ export class Renderer {
     this.resize();
   }
 
+  /** 부모의 안쪽 여백을 뺀 실제 쓸 수 있는 크기. */
+  _availableBox() {
+    const parent = this.canvas.parentElement;
+    if (!parent) {
+      const r = this.canvas.getBoundingClientRect();
+      return [r.width, r.height];
+    }
+    const cs = typeof getComputedStyle === 'function' ? getComputedStyle(parent) : null;
+    const pad = (side) => (cs ? parseFloat(cs[side]) || 0 : 0);
+    return [
+      parent.clientWidth - pad('paddingLeft') - pad('paddingRight'),
+      parent.clientHeight - pad('paddingTop') - pad('paddingBottom'),
+    ];
+  }
+
   resize() {
-    const rect = this.canvas.getBoundingClientRect();
-    const css = Math.max(1, Math.min(rect.width, rect.height));
+    // 정사각형을 CSS의 aspect-ratio에 맡기지 않는다 — Chrome 88(2021년) 이후에만 있어서
+    // 구형 안드로이드 WebView에서는 판이 납작해지거나 사라진다. 부모 크기를 재서
+    // 짧은 쪽에 맞춘 정사각형을 직접 px로 지정하면 어느 환경에서도 같은 결과가 나온다.
+    const [availW, availH] = this._availableBox();
+    const css = Math.max(1, Math.floor(Math.min(availW, availH, MAX_BOARD_PX)));
+
+    if (this.canvas.style) {
+      this.canvas.style.width = `${css}px`;
+      this.canvas.style.height = `${css}px`;
+    }
+
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
     this.canvas.width = Math.round(css * dpr);
     this.canvas.height = Math.round(css * dpr);

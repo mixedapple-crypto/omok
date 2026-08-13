@@ -128,9 +128,12 @@ body {
   padding: 4px 8px;
 }
 #board {
-  /* 가로·세로 중 짧은 쪽에 맞춘 정사각형. 세로 화면이면 폭, 가로 화면이면 높이가 기준이 된다. */
-  width: min(100%, 100vh - 190px);
+  /* 폭과 높이 중 남는 쪽에 맞춰 저절로 줄어드는 정사각형.
+     vh를 쓰지 않는 이유: 모바일 브라우저의 100vh는 주소창이 접히고 펴질 때마다 달라져
+     대국 중에 판 크기가 튄다. 부모 크기에만 기대면 그런 일이 없다. */
+  width: 100%;
   max-width: 560px;
+  max-height: 100%;
   aspect-ratio: 1;
   height: auto;
   border-radius: 10px;
@@ -151,7 +154,7 @@ body {
   .screen-game { flex-direction: row; align-items: stretch; }
   /* 가로 배치에서는 min-width:0 이 있어야 flex 자식이 형제를 화면 밖으로 밀지 않는다. */
   .board-wrap { order: 1; flex: 1; min-width: 0; }
-  #board { width: auto; height: min(100%, 100vw - 220px); }
+  #board { width: auto; height: 100%; max-width: 100%; }
   .hud {
     order: 2; flex-direction: column; justify-content: flex-start;
     padding: 12px; min-width: 150px;

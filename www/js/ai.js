@@ -121,20 +121,61 @@ function moveScore(cells, p, me, defenseWeight) {
 }
 
 /**
+ * 수비 단계 — 난이도의 실체다. 실측 결과 이 값 하나가 승률을 지배한다
+ * (근거: _workspace/runs/skill-ladder-result.txt).
+ *
+ * 아이가 배워야 할 것이 단계마다 하나씩 늘어나게 짰다:
+ *   NONE   막지 않는다              → "막아야 이긴다"를 배운다
+ *   FIVE   5목만 막는다             → "3을 먼저 만들면 이긴다"를 배운다
+ *   FULL   열린4까지 선제 차단        → 이중 위협을 만들 줄 알아야 뚫린다
+ */
+export const DEFENSE = Object.freeze({ NONE: 0, FIVE: 1, FULL: 2 });
+
+/** 난이도 → 수비 단계. 이 표 한 줄이 난이도 사다리의 전부다. */
+const DEFAULT_DEFENSE = Object.freeze({
+  [LEVEL.EASY]: DEFENSE.FIVE,
+  [LEVEL.NORMAL]: DEFENSE.FULL,
+  [LEVEL.HARD]: DEFENSE.FULL,
+});
+
+/**
+ * 열린3 차단을 실제로 수행할 확률.
+ *
+ * 결정 D8은 "확률적 실수는 랜덤해 보이니 쓰지 않는다"였고, 그 판단은 **가장 쉬운 단**에
+ * 대해서는 지금도 유효하다. 하지만 중간 단에는 다른 방법이 없다는 것이 실측으로 확인됐다.
+ * 결정론적 다이얼을 여섯 가지 시도했고 전부 무효였다 — 수비 가중치(0.5~1.1), 시야 반경,
+ * 끊어진 위협 눈가림, DEFENSE.NONE/FIVE, VCF 유무. 승률은 늘 50% 아니면 0%로만 나왔다.
+ * 절벽은 오직 "열린3을 막느냐"에 있고 그 사이에 결정론적 중간이 없다.
+ *
+ * 그래서 중간 단만 확률로 만든다. 사람 중급자도 3을 늘 보지는 못하므로
+ * 관찰되는 행동으로도 자연스럽다. 근거: _workspace/runs/skill-ladder-result.txt
+ */
+const BLOCK_THREE_RATE = Object.freeze({
+  [LEVEL.EASY]: 0,
+  [LEVEL.NORMAL]: 0.6,
+  [LEVEL.HARD]: 1,
+});
+
+/**
  * 하드 규칙 — 점수가 아니라 **순서**로 결정한다 (결정 D5).
- * @param {boolean} full false면 즉시 5목 관련만 본다(쉬움 난이도의 핸디캡).
+ * @param {number} defense DEFENSE.NONE | FIVE | FULL
+ * @param {number} blockThreeRate 규칙 4(상대 열린3 선제 차단)를 실제로 수행할 확률
+ * @param {() => number} rng
  * @returns 착수할 인덱스, 해당 없으면 -1
  */
-function hardRuleMove(cells, me, full, radius) {
+function hardRuleMove(cells, me, defense, radius, blockThreeRate = 1, rng = Math.random) {
   const opp = opponent(me);
   const cand = candidates(cells, radius);
 
   let myUnstoppable = -1;
   for (const p of cand) {
     const a = analyzeMove(cells, p, me);
-    if (a.five) return p; // 1) 이길 수 있으면 무조건 이긴다
+    if (a.five) return p; // 1) 이길 수 있으면 무조건 이긴다 — 전 난이도 공통
     if (myUnstoppable < 0 && (a.openFour || a.fours >= 2)) myUnstoppable = p;
   }
+
+  // 가장 쉬운 단계는 여기서 끝난다. 상대를 아예 보지 않고 자기 줄만 잇는다.
+  if (defense === DEFENSE.NONE) return myUnstoppable >= 0 ? myUnstoppable : -1;
 
   let oppUnstoppable = -1;
   for (const p of cand) {
@@ -145,11 +186,11 @@ function hardRuleMove(cells, me, full, radius) {
     }
   }
 
-  // 쉬움은 여기까지다. 열린4에 대한 선제 대응을 하지 않는 것이 핸디캡의 일부다.
-  if (!full) return -1;
+  if (defense === DEFENSE.FIVE) return -1;
 
   if (myUnstoppable >= 0) return myUnstoppable; // 3) 내가 막을 수 없는 4를 만들 수 있으면 만든다
-  if (oppUnstoppable >= 0) return oppUnstoppable; // 4) 상대가 그러기 전에 막는다
+  // 4) 상대가 그러기 전에 막는다. 중간 난이도는 이걸 가끔 놓친다.
+  if (oppUnstoppable >= 0 && rng() < blockThreeRate) return oppUnstoppable;
   return -1;
 }
 
@@ -323,6 +364,10 @@ export class AI {
     this.timeMs = opts.timeMs ?? HARD_TIME_MS;
     this.leafDefense = opts.leafDefense ?? DEFAULT_LEAF_DEFENSE;
     this.visionRadius = opts.visionRadius ?? CANDIDATE_RADIUS;
+    // 난이도의 실체는 수비 단계다 — 실측으로 이 값이 승률을 지배함을 확인했다
+    // (근거: _workspace/runs/skill-ladder-result.txt).
+    this.defense = opts.defense ?? DEFAULT_DEFENSE[level] ?? DEFENSE.FULL;
+    this.blockThreeRate = opts.blockThreeRate ?? BLOCK_THREE_RATE[level] ?? 1;
     this.defenseWeight = opts.defenseWeight
       ?? DEFENSE_WEIGHT;
     /** 마지막 탐색 통계 — 성능 확인용. */
@@ -343,18 +388,19 @@ export class AI {
   }
 
   /**
-   * 쉬움 / 보통 — 앞을 읽지 않는다.
-   * 쉬움의 핸디캡은 확률적 실수가 아니라 **결정론적 규칙**이다 (결정 D8):
-   * 상대의 4목(다음 수 5목)만 막고 열린3은 절대 막지 않는다. 그래서 아이에게
-   * "3을 먼저 만들면 이긴다"는 배울 수 있는 승리 공식이 생긴다.
+   * 쉬움 / 보통 — 앞을 읽지 않는다. 핸디캡은 확률적 실수가 아니라
+   * **결정론적 규칙**이다 (결정 D8): 무엇을 막고 무엇을 안 막는지가 단계마다 고정돼 있어,
+   * 아이가 "이 난이도는 이렇게 뚫는다"를 배울 수 있다.
    */
   _chooseGreedy(cells, me) {
-    const easy = this.level === LEVEL.EASY;
-    const forced = hardRuleMove(cells, me, !easy, this.visionRadius);
+    const forced = hardRuleMove(cells, me, this.defense, this.visionRadius, this.blockThreeRate, this.random);
     if (forced >= 0) return forced;
-    // 쉬움은 수비 가중치 0 — 상대 모양을 아예 보지 않는다.
-    // 보통은 막되 이중 위협은 미리 못 읽는다 — 그 능력은 어려움의 몫이다.
-    return this._greedyBest(cells, me, easy ? 0 : this.defenseWeight);
+    // 수비 가중치를 **차단 확률과 함께** 묶는다. 묶지 않으면 하드 규칙에서 "안 막기로 한"
+    // 위협을 점수가 도로 막아버려 난이도 구분이 통째로 사라진다. 실측 중 두 번 걸린 함정이다:
+    // 보통의 수비 단계를 낮춰도, 차단 확률을 0.6으로 내려도, 가중치 1.1이 남아 있는 한
+    // 승률은 5%에서 꿈쩍하지 않았다.
+    const weight = this.blockThreeRate >= 1 ? this.defenseWeight : 0;
+    return this._greedyBest(cells, me, weight);
   }
 
   /** 앞을 읽지 않고 한 수 점수만으로 고른다. 어려움의 시간 초과 대비책이기도 하다. */
@@ -397,7 +443,7 @@ export class AI {
    * 내려가는 VCF가 그 차이를 만든다.
    */
   _chooseHard(cells, me) {
-    const forced = hardRuleMove(cells, me, true, this.visionRadius);
+    const forced = hardRuleMove(cells, me, DEFENSE.FULL, this.visionRadius, 1, this.random);
     if (forced >= 0) {
       this.stats.depth = 0;
       this.stats.nodes = 0;
@@ -490,6 +536,9 @@ export function makeRng(seed) {
     return s / 4294967296;
   };
 }
+
+
+
 
 
 

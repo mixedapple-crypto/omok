@@ -336,7 +336,11 @@ function init() {
   const onResize = () => { renderer.resize(); render(); };
   window.addEventListener('resize', onResize);
   window.addEventListener('orientationchange', () => setTimeout(onResize, 120));
-  if (window.ResizeObserver) new ResizeObserver(onResize).observe(canvas);
+  // 캔버스가 아니라 **부모**를 관찰한다. 캔버스를 관찰하면 resize가 캔버스 크기를 바꾸고
+  // 그것이 다시 관찰을 부르는 무한 루프가 된다.
+  if (window.ResizeObserver && canvas.parentElement) {
+    new ResizeObserver(onResize).observe(canvas.parentElement);
+  }
 
   render();
 }

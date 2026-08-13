@@ -41,6 +41,49 @@ for (const level of [LEVEL.EASY, LEVEL.NORMAL, LEVEL.HARD]) {
   notInSet(`[${level}] 이길 수 있는데 차단으로 새지 않는다`, move, OPP_WINS);
 }
 
+// 난이도 사다리의 정의 — 무엇을 막고 무엇을 안 막는지가 단계마다 고정돼 있다.
+// 실측으로 이 한 축이 승률을 지배함을 확인했다(초보 상대 50% / 25% / 0%).
+{
+  const OPP_OPEN_THREE_POS = () => boardWith(
+    [BLACK, [[10, 10], [10, 11]]],
+    [WHITE, [[7, 4], [7, 5], [7, 6]]],
+  );
+  const BLOCKS = [P(7, 3), P(7, 7)];
+
+  // 쉬움은 절대 안 막고, 어려움은 반드시 막는다 — 둘 다 결정론적이다.
+  for (let i = 0; i < 5; i++) {
+    const easyMove = new AI(LEVEL.EASY, { random: makeRng(100 + i) })
+      .chooseMove(OPP_OPEN_THREE_POS(), BLACK);
+    if (BLOCKS.includes(easyMove)) {
+      ok('[easy] 상대 열린3을 절대 막지 않는다', false, `시드 ${100 + i}에서 막았다`);
+      break;
+    }
+    if (i === 4) ok('[easy] 상대 열린3을 절대 막지 않는다 (5회 반복)', true);
+  }
+  for (let i = 0; i < 5; i++) {
+    const hardMove = new AI(LEVEL.HARD, { random: makeRng(200 + i), timeMs: 200 })
+      .chooseMove(OPP_OPEN_THREE_POS(), BLACK);
+    if (!BLOCKS.includes(hardMove)) {
+      ok('[hard] 상대 열린3을 반드시 막는다', false, `시드 ${200 + i}에서 안 막았다`);
+      break;
+    }
+    if (i === 4) ok('[hard] 상대 열린3을 반드시 막는다 (5회 반복)', true);
+  }
+
+  // 보통은 그 사이 — 가끔 놓친다. 결정론적 다이얼이 존재하지 않아 확률로 만들었다(D19).
+  // ⚠️ 엔진을 매 판 새로 만들면 난수의 **첫 값**만 반복해서 뽑게 되어 결과가 뭉친다.
+  //    한 엔진으로 여러 번 두게 해야 난수열이 실제로 진행한다.
+  let blocked = 0;
+  const TRIALS = 40;
+  const normal = new AI(LEVEL.NORMAL, { random: makeRng(12345) });
+  for (let i = 0; i < TRIALS; i++) {
+    if (BLOCKS.includes(normal.chooseMove(OPP_OPEN_THREE_POS(), BLACK))) blocked++;
+  }
+  ok('[normal] 상대 열린3을 대체로 막되 가끔 놓친다',
+    blocked > TRIALS * 0.25 && blocked < TRIALS * 0.95,
+    `${TRIALS}회 중 ${blocked}회 차단 — 전부 막거나 전혀 안 막으면 중간 난이도가 아니다`);
+}
+
 // 내가 이길 수 없고 상대가 다음 수에 이기는 국면 → 전 난이도가 막아야 한다.
 const MUST_BLOCK = () => boardWith(
   [BLACK, [[0, 0], [0, 1]]],
@@ -76,10 +119,7 @@ const BLOCK_POINTS = [P(7, 3), P(7, 7)];
   notInSet('[easy] 상대 열린3을 막지 않는다 — 의도된 핸디캡', move, BLOCK_POINTS);
 }
 {
-  const move = ai(LEVEL.NORMAL).chooseMove(OPP_OPEN_THREE(), BLACK);
-  inSet('[normal] 상대 열린3은 정확히 막는다', move, BLOCK_POINTS);
-}
-{
+  // 보통의 열린3 대응은 확률적이라 여기서 단언하지 않는다 — 위 '난이도 사다리' 절이 담당한다.
   const move = ai(LEVEL.HARD).chooseMove(OPP_OPEN_THREE(), BLACK);
   inSet('[hard] 상대 열린3은 정확히 막는다', move, BLOCK_POINTS);
 }
@@ -114,8 +154,11 @@ const BLOCK_POINTS = [P(7, 3), P(7, 7)];
     [WHITE, [[7, 5], [7, 6], [5, 7], [6, 7]]],
     [BLACK, [[0, 0], [0, 1], [12, 12]]],
   );
-  eq('[normal] 상대 쌍삼 자리를 막는다', ai(LEVEL.NORMAL).chooseMove(cells(), BLACK), P(7, 7));
+  // 상대 쌍삼을 미리 막는 것은 어려움만 한다. 보통은 상대 모양을 점수로 보지 않기 때문이다.
+  // 덕분에 "쌍삼을 배우면 보통은 이길 수 있고 어려움은 못 이긴다"는 사다리가 생긴다.
   eq('[hard] 상대 쌍삼 자리를 막는다', ai(LEVEL.HARD).chooseMove(cells(), BLACK), P(7, 7));
+  notInSet('[normal] 상대 쌍삼은 미리 막지 못한다 — 아이가 배울 공략법',
+    ai(LEVEL.NORMAL).chooseMove(cells(), BLACK), [P(7, 7)]);
 }
 
 // ---------------------------------------------------------------------------
