@@ -149,7 +149,8 @@ body {
    진짜 세로 고정은 APK 단계(AndroidManifest)의 몫이다. */
 @media (orientation: landscape) {
   .screen-game { flex-direction: row; align-items: stretch; }
-  .board-wrap { order: 1; flex: 1; }
+  /* 가로 배치에서는 min-width:0 이 있어야 flex 자식이 형제를 화면 밖으로 밀지 않는다. */
+  .board-wrap { order: 1; flex: 1; min-width: 0; }
   #board { width: auto; height: min(100%, 100vw - 220px); }
   .hud {
     order: 2; flex-direction: column; justify-content: flex-start;

@@ -183,12 +183,18 @@ async function aiTurn() {
   if (gen !== generation) return;
 
   thinking = false;
-  if (typeof move === 'number' && move >= 0) {
-    board.place(move);
+  if (typeof move === 'number' && move >= 0 && board.place(move)) {
     audio.stone();
     vibrate(12);
+    afterMove();
+    return;
   }
-  afterMove();
+
+  // 착수하지 못했다. 여기서 afterMove를 부르면 차례가 그대로라 AI를 다시 불러
+  // 무한 반복에 빠진다. 화면만 갱신하고 멈춘다 — 사용자가 무르기나 다시하기로 빠져나갈 수 있다.
+  console.error('[omok] AI가 둘 자리를 찾지 못했다. 차례를 넘기지 않는다.');
+  render();
+  updateHud();
 }
 
 function endGame() {
