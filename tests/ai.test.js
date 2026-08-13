@@ -109,13 +109,13 @@ const BLOCK_POINTS = [P(7, 3), P(7, 7)];
   eq('[normal] 쌍삼 자리를 찾는다', move, P(7, 7));
 }
 {
-  // 상대가 쌍삼을 두려는 자리를 막는다 — 단순 합산이면 놓치는 국면이다 (결정 D6).
-  const cells = boardWith(
+  // 상대가 쌍삼을 두려는 자리 — 단순 합산이면 놓치는 국면이다 (결정 D6).
+  const cells = () => boardWith(
     [WHITE, [[7, 5], [7, 6], [5, 7], [6, 7]]],
     [BLACK, [[0, 0], [0, 1], [12, 12]]],
   );
-  const move = ai(LEVEL.NORMAL).chooseMove(cells, BLACK);
-  eq('[normal] 상대 쌍삼 자리를 막는다', move, P(7, 7));
+  eq('[normal] 상대 쌍삼 자리를 막는다', ai(LEVEL.NORMAL).chooseMove(cells(), BLACK), P(7, 7));
+  eq('[hard] 상대 쌍삼 자리를 막는다', ai(LEVEL.HARD).chooseMove(cells(), BLACK), P(7, 7));
 }
 
 // ---------------------------------------------------------------------------

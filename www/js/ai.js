@@ -7,7 +7,7 @@
  */
 
 import {
-  CELLS, EMPTY, BLACK, WHITE,
+  CELLS, EMPTY, BLACK, WHITE, DIRS,
   idx, rowOf, colOf, inBounds, opponent, findWinLine,
 } from './board.js';
 import { analyzeMove, evalBoth } from './patterns.js';
@@ -54,10 +54,14 @@ export function newVcfCtx(deadline = Date.now() + 5000) {
 }
 
 /**
- * 보통 난이도의 수비 가중치. 1보다 조금 크다.
- * 같은 등급이면 방어가 이겨야 한다 — 상대 열린3을 놔두고 내 열린3을 만들면
- * 다음 수에 상대가 열린4를 만들어 진다. 반면 내 막힌4(10,000)는 상대 열린3
- * 차단(5,000 × 1.1)보다 여전히 크므로, 반격이 가능할 때는 반격한다.
+ * 수비 가중치. 1보다 조금 커서 같은 등급이면 방어가 이긴다 —
+ * 상대 열린3을 놔두고 내 열린3을 만들면 다음 수에 상대가 열린4를 만들어 진다.
+ * 반면 내 막힌4(10,000)는 상대 열린3 차단(5,000 × 1.1)보다 여전히 크므로
+ * 반격이 가능할 때는 반격한다.
+ *
+ * 난이도별로 다르게 줘 봤지만 **초보 승률에 유의미한 차이가 없었다**
+ * (0.5·0.7·0.8·0.9 전부 0%, 1.1이 4%). 오히려 낮출수록 공격이 빨라져 더 셌다.
+ * 근거: _workspace/runs/tune-defense-result.txt
  */
 const DEFENSE_WEIGHT = 1.1;
 
@@ -121,9 +125,9 @@ function moveScore(cells, p, me, defenseWeight) {
  * @param {boolean} full false면 즉시 5목 관련만 본다(쉬움 난이도의 핸디캡).
  * @returns 착수할 인덱스, 해당 없으면 -1
  */
-function hardRuleMove(cells, me, full) {
+function hardRuleMove(cells, me, full, radius) {
   const opp = opponent(me);
-  const cand = candidates(cells);
+  const cand = candidates(cells, radius);
 
   let myUnstoppable = -1;
   for (const p of cand) {
@@ -136,7 +140,9 @@ function hardRuleMove(cells, me, full) {
   for (const p of cand) {
     const a = analyzeMove(cells, p, opp);
     if (a.five) return p; // 2) 상대가 이길 수 있으면 막는다
-    if (oppUnstoppable < 0 && (a.openFour || a.fours >= 2)) oppUnstoppable = p;
+    if (oppUnstoppable < 0 && (a.openFour || a.fours >= 2)) {
+      oppUnstoppable = p;
+    }
   }
 
   // 쉬움은 여기까지다. 열린4에 대한 선제 대응을 하지 않는 것이 핸디캡의 일부다.
@@ -316,6 +322,9 @@ export class AI {
     this.random = opts.random ?? Math.random;
     this.timeMs = opts.timeMs ?? HARD_TIME_MS;
     this.leafDefense = opts.leafDefense ?? DEFAULT_LEAF_DEFENSE;
+    this.visionRadius = opts.visionRadius ?? CANDIDATE_RADIUS;
+    this.defenseWeight = opts.defenseWeight
+      ?? DEFENSE_WEIGHT;
     /** 마지막 탐색 통계 — 성능 확인용. */
     this.stats = { nodes: 0, depth: 0, ms: 0 };
   }
@@ -341,15 +350,16 @@ export class AI {
    */
   _chooseGreedy(cells, me) {
     const easy = this.level === LEVEL.EASY;
-    const forced = hardRuleMove(cells, me, !easy);
+    const forced = hardRuleMove(cells, me, !easy, this.visionRadius);
     if (forced >= 0) return forced;
     // 쉬움은 수비 가중치 0 — 상대 모양을 아예 보지 않는다.
-    return this._greedyBest(cells, me, easy ? 0 : DEFENSE_WEIGHT);
+    // 보통은 막되 이중 위협은 미리 못 읽는다 — 그 능력은 어려움의 몫이다.
+    return this._greedyBest(cells, me, easy ? 0 : this.defenseWeight);
   }
 
   /** 앞을 읽지 않고 한 수 점수만으로 고른다. 어려움의 시간 초과 대비책이기도 하다. */
   _greedyBest(cells, me, weight) {
-    const cand = candidates(cells);
+    const cand = candidates(cells, this.visionRadius);
     if (cand.length === 0) return -1;
 
     let best = -Infinity;
@@ -369,19 +379,25 @@ export class AI {
   }
 
   /**
-   * 어려움 — '보통'의 판단을 기본으로 쓰고, 탐색은 **확정 승/패를 가려내는 데만** 쓴다.
+   * 어려움 — 네 단계를 순서대로 본다.
    *
-   * 왜 탐색에게 위치 판단까지 맡기지 않는가: 맡겼더니 실제로 더 약했다. selfplay 대조군에서
+   *   ① 하드 규칙        즉시 승리 / 즉시 방어 (전 난이도 공통)
+   *   ② VCF              연속 4로 이기는 8수 수순, 그리고 상대 수순 차단  ← 보통과 갈리는 지점
+   *   ③ 일반 탐색        강제 승리 확인 + 탐욕 최선수가 지는 수인지 검증
+   *   ④ 탐욕 점수        위치 판단은 여기서 한다 (= 보통과 동일)
+   *
+   * **위치 판단을 탐색에게 맡기지 않는 이유**: 맡겼더니 실제로 더 약했다. selfplay 대조군에서
    * 보통끼리는 서로 못 뚫어 9/10이 무승부인데, 보통(흑)은 어려움(백)을 4/5로 이겼다.
-   * 깊이 4~6짜리 리프 평가는 "누가 주도권을 쥐었는가"를 표현하지 못해, 상대가 막을 위협을
-   * 만들어봐야 점수가 안 오르니 공격을 포기하고 어정쩡한 수를 둔다.
-   *
-   * 그래서 역할을 나눈다. 위치 판단은 탐욕 점수(= 보통과 동일)가 하고, 탐색은
-   *   ① 강제 승리가 있으면 찾아내고  ② 지는 수를 후보에서 제거한다.
+   * 깊이 4짜리 리프 평가는 "누가 주도권을 쥐었는가"를 표현하지 못해, 어차피 막힐 위협은
+   * 점수가 안 올라 공격을 포기하고 어정쩡한 수를 둔다. 그래서 ④가 기본이고 ③은 거부권만 갖는다.
    * 이 구조면 어려움이 보통보다 약해질 수 **없다** — 최악이라도 보통과 같은 수를 둔다.
+   *
+   * **강함은 ②에서 나온다.** ③을 거부권으로만 쓰면 어려움과 보통이 구별되지 않는데
+   * (실측: 어려움 vs 보통이 대조군과 완전히 같은 0승 1패 15무), 폭이 좁아 깊이 8까지
+   * 내려가는 VCF가 그 차이를 만든다.
    */
   _chooseHard(cells, me) {
-    const forced = hardRuleMove(cells, me, true);
+    const forced = hardRuleMove(cells, me, true, this.visionRadius);
     if (forced >= 0) {
       this.stats.depth = 0;
       this.stats.nodes = 0;
@@ -418,7 +434,7 @@ export class AI {
     }
 
     // 기본값은 '보통'의 판단이다. 탐색은 이걸 뒤집을 근거가 있을 때만 개입한다.
-    const greedyMove = this._greedyBest(cells, me, DEFENSE_WEIGHT);
+    const greedyMove = this._greedyBest(cells, me, this.defenseWeight);
     const newCtx = (d, deadline) => ({
       deadline, timeout: false, nodes: 0,
       width: HARD_WIDTH, maxDepth: d, leafDefense: this.leafDefense,
@@ -474,3 +490,9 @@ export function makeRng(seed) {
     return s / 4294967296;
   };
 }
+
+
+
+
+
+
