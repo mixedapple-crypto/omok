@@ -1,0 +1,47 @@
+name: Deploy to GitHub Pages
+
+# main에 push하면 테스트를 돌리고, 통과할 때만 배포한다.
+# 테스트를 게이트로 두는 이유: 배포 대상이 아이가 실제로 쓰는 사이트라
+# 깨진 상태가 올라가면 "아빠 게임 안 돼"로 돌아온다.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포가 겹치면 나중 것만 남긴다.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # 의존성이 0이라 설치 단계가 없다. npm test가 node를 직접 부른다.
+      - name: 단위 테스트 243개
+        run: npm test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          # www/ 안의 것만 올린다. 테스트·문서·결정 원장은 사이트에 필요 없다.
+          path: www
+      - id: deployment
+        uses: actions/deploy-pages@v4
