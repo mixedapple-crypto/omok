@@ -124,6 +124,37 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
     landscape ? `조건: (orientation: landscape)${landscape[1].trim()}` : '가로 미디어쿼리를 못 찾았다');
 }
 
+// --- 홈 화면에 추가 (아이패드) -------------------------------------------------------
+{
+  ok('매니페스트가 존재한다', existsSync(join(ROOT, 'www/manifest.webmanifest')));
+  const mf = JSON.parse(read('www/manifest.webmanifest'));
+
+  eq('전체화면으로 뜬다', mf.display, 'standalone');
+  // 하위 경로(/omok/)로 서빙되므로 절대경로를 쓰면 홈 화면에서 열 때 404가 난다.
+  ok('start_url이 상대경로', !mf.start_url.startsWith('/'), `실제: ${mf.start_url}`);
+  ok('scope가 상대경로', !mf.scope.startsWith('/'), `실제: ${mf.scope}`);
+
+  for (const icon of mf.icons) {
+    ok(`매니페스트 아이콘이 실제로 있다: ${icon.src}`, existsSync(join(ROOT, 'www', icon.src)));
+    ok(`아이콘 경로가 상대경로: ${icon.src}`, !icon.src.startsWith('/'));
+  }
+
+  // 이게 없으면 iOS가 페이지 스크린샷을 아이콘으로 써버린다.
+  const touchIcon = html.match(/<link[^>]+rel="apple-touch-icon"[^>]+href="([^"]+)"/);
+  ok('apple-touch-icon이 선언돼 있다', touchIcon !== null);
+  if (touchIcon) {
+    ok(`apple-touch-icon 파일이 있다: ${touchIcon[1]}`, existsSync(join(ROOT, 'www', touchIcon[1])));
+  }
+  ok('HTML이 매니페스트를 참조한다', /rel="manifest"/.test(html));
+  ok('iOS 전체화면 메타가 있다', /name="apple-mobile-web-app-capable"/.test(html));
+
+  // 상태바 아래까지 그리므로 safe-area 여백이 없으면 HUD가 노치·상태바에 가린다.
+  const css = read('www/css/style.css');
+  const translucent = /content="black-translucent"/.test(html);
+  ok('상태바 아래까지 쓰면 safe-area 여백이 있어야 한다',
+    !translucent || /env\(safe-area-inset-top\)/.test(css));
+}
+
 // --- 워커 경로 ---------------------------------------------------------------------
 {
   ok('ai-worker.js가 존재한다', existsSync(join(ROOT, 'www/js/ai-worker.js')));

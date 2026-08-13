@@ -6,6 +6,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#2b1d12">
 <title>오목</title>
+
+<!-- 홈 화면에 추가했을 때 앱처럼 보이게 하는 설정.
+     경로는 전부 상대경로다 — GitHub Pages처럼 하위 경로(/omok/)로 서빙돼도 그대로 동작한다. -->
+<link rel="manifest" href="manifest.webmanifest">
+<!-- apple-touch-icon이 없으면 iOS가 **페이지 스크린샷을 아이콘으로** 써버린다. -->
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-title" content="오목">
+<!-- 표준은 mobile-web-app-capable이지만 iOS는 아직 apple- 접두사 쪽을 본다. 둘 다 둔다. -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<!-- 상태바 아래까지 화면을 쓴다. 잘림은 CSS의 env(safe-area-inset-*)가 막는다. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
