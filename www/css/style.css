@@ -128,14 +128,10 @@ body {
   padding: 4px 8px;
 }
 #board {
-  /* 폭과 높이 중 남는 쪽에 맞춰 저절로 줄어드는 정사각형.
-     vh를 쓰지 않는 이유: 모바일 브라우저의 100vh는 주소창이 접히고 펴질 때마다 달라져
-     대국 중에 판 크기가 튄다. 부모 크기에만 기대면 그런 일이 없다. */
-  width: 100%;
-  max-width: 560px;
-  max-height: 100%;
-  aspect-ratio: 1;
-  height: auto;
+  /* ⚠️ 크기는 render.js가 부모를 재서 px로 직접 지정한다. 여기서 width/height/max-*를
+     건드리지 마라. CSS의 max-width는 인라인 스타일보다 우선하므로, 두 곳에서 크기를
+     정하면 캔버스가 찌그러지고 **터치 좌표가 어긋난다** — 화면상으로는 멀쩡해 보여서
+     찾기 어려운 종류의 버그다. 여기는 겉모습만 담당한다. */
   border-radius: 10px;
   touch-action: manipulation; /* 더블탭 확대 방지 */
   display: block;
@@ -146,15 +142,18 @@ body {
   padding: 10px 12px; padding-bottom: max(10px, env(safe-area-inset-bottom));
 }
 
-/* ── 가로 모드 방어 ────────────────────────────────────────────
-   screen.orientation.lock()은 풀스크린에서만 허용되어 브라우저 탭에서는 거부된다.
-   그래서 세로 고정을 약속하는 대신 가로에서도 깨지지 않게 만든다.
-   진짜 세로 고정은 APK 단계(AndroidManifest)의 몫이다. */
-@media (orientation: landscape) {
+/* ── 화면이 납작할 때의 방어 배치 ──────────────────────────────
+   조건이 "가로"가 아니라 "가로 **그리고** 낮음"인 이유: 아이패드는 가로로 눕혀도
+   높이가 800px 안팎이라 위아래 배치가 훨씬 낫다. 가로라는 이유만으로 옆구리 배치를
+   쓰면 넓은 화면에서 판이 쓸데없이 작아진다. 이 배치가 필요한 것은 폰을 눕혔을 때
+   (높이 400px 안팎)뿐이다.
+
+   참고: screen.orientation.lock()은 풀스크린에서만 허용되어 브라우저 탭에서는 거부되므로
+   세로 고정을 약속할 수 없다. 그래서 가로에서도 깨지지 않게 만들어 둔다. */
+@media (orientation: landscape) and (max-height: 560px) {
   .screen-game { flex-direction: row; align-items: stretch; }
   /* 가로 배치에서는 min-width:0 이 있어야 flex 자식이 형제를 화면 밖으로 밀지 않는다. */
   .board-wrap { order: 1; flex: 1; min-width: 0; }
-  #board { width: auto; height: 100%; max-width: 100%; }
   .hud {
     order: 2; flex-direction: column; justify-content: flex-start;
     padding: 12px; min-width: 150px;
@@ -166,6 +165,17 @@ body {
   .btn-sub, .btn-place { flex: none; }
   .screen-menu, .screen-solo { gap: 12px; padding: 12px; }
   .logo { font-size: clamp(36px, 9vh, 56px); }
+}
+
+/* 큰 화면(아이패드 등)에서는 버튼과 글씨도 같이 키운다. 판만 커지면 균형이 깨진다. */
+@media (min-width: 700px) and (min-height: 700px) {
+  :root { --tap: 64px; }
+  .btn-big { font-size: 26px; }
+  .btn-sub, .btn-place { font-size: 21px; }
+  .turn { font-size: 24px; }
+  .turn .dot { width: 30px; height: 30px; }
+  .controls { padding: 14px 20px; gap: 12px; }
+  .hud { padding: 12px 20px; }
 }
 
 /* ── 오버레이 ──────────────────────────────────────────────── */

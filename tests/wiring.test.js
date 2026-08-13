@@ -93,6 +93,37 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
   }
 }
 
+// --- 크기 지정 권한이 한 곳에만 있는가 (실제로 났던 결함) ---------------------------
+{
+  const css = read('www/css/style.css');
+  const renderJs = read('www/js/render.js');
+
+  ok('render.js가 캔버스 크기를 직접 지정한다', /style\.width\s*=/.test(renderJs));
+
+  // #board 규칙 안에서 크기를 정하면 인라인 스타일과 충돌한다.
+  // CSS의 max-width는 인라인 width보다 우선하므로, 캔버스가 찌그러지고 터치 좌표가 어긋난다.
+  // 화면상으로는 멀쩡해 보여서 실기기에서만 드러나는 종류의 결함이다.
+  const boardRules = [...css.matchAll(/#board\s*\{([^}]*)\}/g)].map((m) => m[1]);
+  ok('#board 규칙이 존재한다', boardRules.length > 0);
+  for (const body of boardRules) {
+    const offenders = ['width', 'height', 'max-width', 'max-height', 'min-width', 'min-height', 'aspect-ratio']
+      .filter((prop) => new RegExp(`(^|[;\\s])${prop}\\s*:`).test(body));
+    ok('CSS가 #board 크기를 건드리지 않는다 — 크기 권한은 render.js 한 곳에만',
+      offenders.length === 0, `발견된 속성: ${offenders.join(', ')}`);
+  }
+}
+
+// --- 화면 배치 조건 ------------------------------------------------------------------
+{
+  const css = read('www/css/style.css');
+  // 아이패드는 눕혀도 높이가 800px 안팎이라 옆구리 배치가 오히려 손해다.
+  // 조건이 "가로"만이면 넓은 화면에서 판이 쓸데없이 작아진다.
+  const landscape = css.match(/@media\s*\(orientation:\s*landscape\)([^{]*)\{/);
+  ok('옆구리 배치는 가로 + 낮은 화면일 때만 켜진다',
+    landscape !== null && /max-height/.test(landscape[1]),
+    landscape ? `조건: (orientation: landscape)${landscape[1].trim()}` : '가로 미디어쿼리를 못 찾았다');
+}
+
 // --- 워커 경로 ---------------------------------------------------------------------
 {
   ok('ai-worker.js가 존재한다', existsSync(join(ROOT, 'www/js/ai-worker.js')));

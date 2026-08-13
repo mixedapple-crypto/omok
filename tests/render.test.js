@@ -133,12 +133,34 @@ const SIZE_PX = 360;
   eq('그래도 천원 판정은 맞는다', r.hitTest(r.x(7), r.y(7)), idx(7, 7));
 }
 {
-  // 큰 화면에서 판만 무한히 커지면 오히려 짚기 불편하다.
+  // 큰 화면에서 판만 무한히 커지면 팔을 뻗어야 닿아 오히려 불편하다.
   const r = await makeRenderer(SIZE_PX, 2);
   r.canvas.parentElement.clientWidth = 2000;
   r.canvas.parentElement.clientHeight = 2000;
   r.resize();
-  ok('판 크기에 상한이 있다', r.css <= 560, `실제 ${r.css}px`);
+  ok('판 크기에 상한이 있다', r.css <= 720, `실제 ${r.css}px`);
+}
+
+// --- 실제 기기 크기별 결과 -------------------------------------------------------
+// 숫자를 눈으로 확인할 수 있게 대표 기기를 박아 둔다. 한 칸이 6.5mm(약 24px)보다
+// 훨씬 작아지면 아이가 짚기 어렵다.
+{
+  const DEVICES = [
+    ['아이폰 세로', 390, 660, 20],
+    ['아이패드 세로', 820, 1000, 40],
+    ['아이패드 가로', 1080, 700, 40],
+    ['폰 가로(옆구리 배치)', 500, 330, 18],
+  ];
+  for (const [name, w, h, minCell] of DEVICES) {
+    const r = await makeRenderer(SIZE_PX, 2);
+    r.canvas.parentElement.clientWidth = w;
+    r.canvas.parentElement.clientHeight = h;
+    r.resize();
+    ok(`${name} (${w}×${h}) 한 칸 ${r.cell.toFixed(1)}px — 짚을 만한가`,
+      r.cell >= minCell, `기대 ${minCell}px 이상 / 실제 ${r.cell.toFixed(1)}px, 판 ${r.css}px`);
+    eq(`${name} 좌표 정합`, r.hitTest(r.x(7), r.y(7)), idx(7, 7));
+    ok(`${name} 판이 부모를 넘지 않는다`, r.css <= Math.min(w, h));
+  }
 }
 
 // --- 판이 아주 작아도 죽지 않아야 한다 --------------------------------------------
