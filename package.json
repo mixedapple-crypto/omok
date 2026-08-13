@@ -1,0 +1,12 @@
+{
+  "name": "omok",
+  "version": "0.1.0",
+  "private": true,
+  "description": "광고 없는 오목 게임 — 1인 대전(AI 3단계)/2인 대전, 자유룰",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/board.test.js && node tests/patterns.test.js && node tests/ai.test.js",
+    "selfplay": "node tests/ai-selfplay.js",
+    "serve": "node serve.js"
+  }
+}

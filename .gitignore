@@ -1,0 +1,12 @@
+node_modules/
+
+# 실행 산출물 — 증거는 세션 내에서만 의미가 있다
+_workspace/runs/
+_workspace/screenshots/
+test-results.json
+.claude/.evidence-reads
+.claude/hooks/__pycache__/
+
+# Capacitor (APK 단계에서 생성)
+android/
+.capacitor/

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- user-scalable=no: 아이가 두 손가락으로 판을 확대해버리면 착수가 어긋난다 -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2b1d12">
+<title>오목</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app" data-screen="menu">
+
+  <!-- ── 메인 메뉴 ─────────────────────────────────────────────── -->
+  <section class="screen screen-menu">
+    <h1 class="logo">오목</h1>
+    <p class="tagline">다섯 개를 먼저 이으면 이겨요</p>
+
+    <div class="menu-buttons">
+      <button class="btn btn-big" data-action="solo">혼자 하기</button>
+      <button class="btn btn-big" data-action="duo">둘이 하기</button>
+      <button class="btn btn-ghost" data-action="settings">설정</button>
+    </div>
+
+    <p class="record" id="record"></p>
+  </section>
+
+  <!-- ── 혼자 하기 설정 ────────────────────────────────────────── -->
+  <section class="screen screen-solo">
+    <h2 class="sub-title">혼자 하기</h2>
+
+    <fieldset class="choice">
+      <legend>얼마나 세게 할까요?</legend>
+      <div class="choice-row" id="level-choice">
+        <button class="chip" data-level="easy">쉬움<small>이길 수 있어요</small></button>
+        <button class="chip" data-level="normal">보통<small>제법 잘해요</small></button>
+        <button class="chip" data-level="hard">어려움<small>아주 셉니다</small></button>
+      </div>
+    </fieldset>
+
+    <fieldset class="choice">
+      <legend>누가 먼저 둘까요?</legend>
+      <div class="choice-row" id="first-choice">
+        <button class="chip" data-first="me"><span class="dot black"></span>내가 먼저</button>
+        <button class="chip" data-first="ai"><span class="dot white"></span>컴퓨터 먼저</button>
+      </div>
+    </fieldset>
+
+    <div class="menu-buttons">
+      <button class="btn btn-big" data-action="start-solo">시작!</button>
+      <button class="btn btn-ghost" data-action="back-menu">뒤로</button>
+    </div>
+  </section>
+
+  <!-- ── 게임 ──────────────────────────────────────────────────── -->
+  <section class="screen screen-game">
+    <header class="hud">
+      <div class="turn" id="turn-label">
+        <span class="dot black" id="turn-dot"></span>
+        <span id="turn-text">내 차례</span>
+      </div>
+      <button class="btn-icon" data-action="back-menu" aria-label="메뉴로">✕</button>
+    </header>
+
+    <div class="board-wrap">
+      <canvas id="board" aria-label="오목판"></canvas>
+    </div>
+
+    <footer class="controls">
+      <button class="btn btn-sub" data-action="undo" id="btn-undo">무르기</button>
+      <button class="btn btn-place" data-action="place" id="btn-place" disabled>여기 놓기</button>
+      <button class="btn btn-sub" data-action="restart">다시</button>
+    </footer>
+  </section>
+
+  <!-- ── 결과 ──────────────────────────────────────────────────── -->
+  <div class="overlay" id="result-overlay" hidden>
+    <div class="card">
+      <p class="result-emoji" id="result-emoji">🎉</p>
+      <h2 class="result-text" id="result-text">이겼다!</h2>
+      <div class="menu-buttons">
+        <button class="btn btn-big" data-action="restart">한 판 더</button>
+        <button class="btn btn-ghost" data-action="back-menu">메뉴로</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 설정 ──────────────────────────────────────────────────── -->
+  <div class="overlay" id="settings-overlay" hidden>
+    <div class="card">
+      <h2 class="sub-title">설정</h2>
+      <label class="toggle"><input type="checkbox" id="opt-sound"><span>소리</span></label>
+      <label class="toggle"><input type="checkbox" id="opt-vibrate"><span>진동</span></label>
+      <label class="toggle"><input type="checkbox" id="opt-instant"><span>한 번 눌러 바로 놓기</span></label>
+      <p class="hint">끄면 두 번 눌러야 놓입니다. 잘못 짚어도 다시 고를 수 있어요.</p>
+      <div class="menu-buttons">
+        <button class="btn btn-big" data-action="close-settings">닫기</button>
+        <button class="btn btn-ghost" data-action="reset-record">전적 지우기</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="confetti" aria-hidden="true"></div>
+</div>
+
+<script type="module" src="js/game.js"></script>
+</body>
+</html>
