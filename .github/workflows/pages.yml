@@ -38,6 +38,12 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # 서비스 워커의 캐시 버전을 커밋 SHA로 박는다. 손으로 올리는 상수로 두면
+      # 언젠가 깜빡하고, 그러면 아이 아이패드에 옛 버전이 영영 남는다.
+      - name: 캐시 버전 주입
+        run: |
+          sed -i "s/__BUILD__/${GITHUB_SHA::12}/" www/sw.js
+          grep -n "const VERSION" www/sw.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -44,7 +44,10 @@ body {
   align-items: center;
   justify-content: center;
   gap: 20px;
-  padding: 24px;
+  /* 상태바 아래까지 화면을 쓰므로(black-translucent) 안전 영역만큼 비워야
+     제목이 시계·다이내믹 아일랜드에 가리지 않는다. */
+  padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+           max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
   text-align: center;
 }
 

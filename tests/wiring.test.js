@@ -155,6 +155,68 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
     !translucent || /env\(safe-area-inset-top\)/.test(css));
 }
 
+// --- 오디오 잠금 해제 위치 (iOS에서 실제로 무음이던 결함) ----------------------------
+{
+  const audioJs = read('www/js/audio.js');
+
+  // HTML 명세가 사용자 활성화를 주는 이벤트: click · keydown · mousedown ·
+  // pointerup(마우스 아닐 때) · touchend. **손가락 pointerdown은 주지 않는다.**
+  // pointerdown에서만 unlock을 부르면 iOS에서 소리가 에러 없이 조용히 안 난다.
+  const unlockLines = gameJs.split('\n')
+    .map((l, i) => ({ l, i }))
+    .filter(({ l }) => /audio\.unlock\(\)/.test(l));
+  ok('game.js가 audio.unlock을 부른다', unlockLines.length > 0);
+
+  const grantsActivation = /addEventListener\('(click|pointerup|touchend|keydown)'[^)]*\)\s*=>\s*audio\.unlock\(\)|addEventListener\('(click|pointerup|touchend|keydown)',\s*\(\)\s*=>\s*audio\.unlock/;
+  ok('사용자 활성화를 주는 이벤트에서 잠금을 푼다 (click/pointerup)',
+    grantsActivation.test(gameJs),
+    '손가락 pointerdown은 활성화를 주지 않아 iOS에서 무음이 된다');
+
+  ok('착수 핸들러(pointerdown)에서는 unlock을 부르지 않는다',
+    !/function onBoardPointer[\s\S]{0,200}?audio\.unlock\(\)/.test(gameJs),
+    'pointerdown은 활성화를 주지 않으므로 여기서 부르면 효과가 없다');
+
+  // iOS에는 'interrupted' 상태가 따로 있어 'suspended'만 보면 영영 무음이 된다.
+  ok("resume 조건이 'suspended' 한정이 아니다",
+    /state\s*!==\s*'running'/.test(audioJs),
+    "iOS의 'interrupted' 상태를 놓친다");
+
+  ok('앱 복귀 시 오디오를 되살린다', /visibilitychange/.test(gameJs));
+}
+
+// --- 오프라인 (서비스 워커) ----------------------------------------------------------
+{
+  ok('서비스 워커가 존재한다', existsSync(join(ROOT, 'www/sw.js')));
+  const sw = read('www/sw.js');
+
+  ok('game.js가 서비스 워커를 등록한다', /serviceWorker\.register\('\.\/sw\.js'\)/.test(sw ? gameJs : ''));
+
+  // 캐시 목록에서 빠지면 오프라인에서 그 파일만 조용히 죽는다.
+  const cached = all(sw, /'(\.\/[^']*)'/g);
+  const needed = [
+    './index.html', './manifest.webmanifest', './css/style.css',
+    './js/game.js', './js/board.js', './js/patterns.js', './js/render.js',
+    './js/audio.js', './js/storage.js', './js/ui.js',
+    // 이 둘은 HTML이 참조하지 않고 실행 중에 따로 요청된다. 빠뜨리면
+    // 오프라인에서 워커와 폴백이 **동시에** 죽어 "생각하는 중…"에서 멈춘다.
+    './js/ai.js', './js/ai-worker.js',
+  ];
+  for (const f of needed) {
+    ok(`캐시 목록에 있다: ${f}`, cached.includes(f));
+  }
+
+  // www/js 아래 파일이 늘었는데 캐시 목록에 안 넣는 것을 잡는다.
+  const jsFiles = [...new Set(all(read('www/index.html'), /src="js\/([^"]+)"/g))];
+  ok('HTML이 부르는 스크립트가 캐시에 있다',
+    jsFiles.every((f) => cached.includes(`./js/${f}`)), `HTML 스크립트: ${jsFiles.join(', ')}`);
+
+  // 버전이 손으로 관리되면 언젠가 깜빡하고 옛 캐시가 영영 남는다.
+  ok('캐시 버전을 CI가 주입한다', /__BUILD__/.test(sw));
+  const ci = read('.github/workflows/pages.yml');
+  ok('배포 워크플로가 실제로 버전을 치환한다', /__BUILD__/.test(ci) && /GITHUB_SHA/.test(ci));
+  ok('구버전 캐시를 지운다', /caches\.delete/.test(sw));
+}
+
 // --- 워커 경로 ---------------------------------------------------------------------
 {
   ok('ai-worker.js가 존재한다', existsSync(join(ROOT, 'www/js/ai-worker.js')));

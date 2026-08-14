@@ -249,8 +249,6 @@ function undo() {
 // ── 입력 ──────────────────────────────────────────────────────────────────
 
 function onBoardPointer(e) {
-  // 첫 제스처에서 오디오 잠금을 푼다. 이걸 빠뜨리면 소리가 조용히 안 난다.
-  audio.unlock();
   if (thinking || board.isOver) return;
   if (mode === 'solo' && board.turn !== humanColor) return;
 
@@ -333,6 +331,19 @@ function init() {
   // 판 위에서의 스크롤·확대 제스처를 막는다. 착수 중에 화면이 움직이면 오착이 난다.
   canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
 
+  // 오디오 잠금 해제는 **사용자 활성화를 주는 이벤트**에서만 통한다(audio.js 주석 참조).
+  // 손가락 pointerdown은 활성화를 주지 않으므로 착수 핸들러에 얹으면 안 된다.
+  // 메뉴 버튼의 click과 판 위의 pointerup, 두 군데를 건다 — 아이는 게임에 들어오기 전에
+  // 반드시 버튼을 한 번 누르므로 사실상 첫 화면에서 풀린다.
+  canvas.addEventListener('pointerup', () => audio.unlock());
+  document.addEventListener('click', () => audio.unlock(), { capture: true });
+
+  // 전화가 오거나 홈 화면에 갔다 오면 iOS가 오디오를 'interrupted'로 돌린다.
+  // 복귀 시 한 번 시도하고, 실패하더라도 다음 탭에서 위 핸들러가 다시 푼다.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) audio.unlock();
+  });
+
   const onResize = () => { renderer.resize(); render(); };
   window.addEventListener('resize', onResize);
   window.addEventListener('orientationchange', () => setTimeout(onResize, 120));
@@ -343,6 +354,22 @@ function init() {
   }
 
   render();
+  registerServiceWorker();
+}
+
+/**
+ * 오프라인 지원. 실패해도 게임은 정상 동작하므로 조용히 넘어간다.
+ * 경로는 상대경로여야 한다 — GitHub Pages가 하위 경로(/omok/)로 서빙한다.
+ */
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  // 파일에서 직접 연 경우(file://)엔 등록이 안 되고 예외만 난다.
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') return;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((err) => {
+      console.warn('[omok] 오프라인 지원 등록 실패(게임은 정상):', err);
+    });
+  });
 }
 
 init();

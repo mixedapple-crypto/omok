@@ -54,6 +54,13 @@ export function syncSettings({ sound, vibrate, instant }) {
   $('#opt-sound').checked = !!sound;
   $('#opt-vibrate').checked = !!vibrate;
   $('#opt-instant').checked = !!instant;
+
+  // iOS는 navigator.vibrate를 지원하지 않는다. 켜도 아무 일이 없는 스위치를 보여주면
+  // 아이는 "고장났다"고 느낀다. 안 되는 기기에서는 아예 감춘다.
+  if (!('vibrate' in navigator)) {
+    const row = $('#opt-vibrate').closest('.toggle');
+    if (row) row.hidden = true;
+  }
 }
 
 export function onSettingChange(handler) {

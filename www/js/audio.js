@@ -9,10 +9,15 @@ let enabled = true;
 export function setEnabled(v) { enabled = !!v; }
 
 /**
- * 첫 사용자 제스처에서 반드시 호출한다.
+ * 사용자 제스처에서 호출한다. 여러 번 불러도 안전하다.
  *
- * AudioContext는 사용자 제스처 전까지 suspended 상태로 만들어지고, 그대로 두면
- * 소리가 **에러 없이 조용히** 안 난다. 로그에도 안 남아 원인 찾기가 번거로운 종류의 실패다.
+ * ⚠️ **반드시 사용자 활성화를 주는 이벤트에서 불러야 한다.**
+ * HTML 명세가 활성화를 주는 이벤트로 정한 것은 click · keydown · mousedown ·
+ * pointerup(마우스가 아닐 때) · touchend, 그리고 **pointerdown은 마우스일 때만**이다.
+ * 즉 손가락 pointerdown은 활성화를 주지 않는다. 여기서 부르면 iOS에서 소리가
+ * **에러 하나 없이 조용히** 안 난다. 게다가 WebKit의 활성화 유효시간은 5초라,
+ * 활성화를 받은 뒤 아이가 6초 고민하고 두면 그것만으로 무음이 된다.
+ * 그래서 game.js는 click과 pointerup 양쪽에서 이 함수를 부른다.
  */
 export function unlock() {
   try {
@@ -21,10 +26,17 @@ export function unlock() {
       if (!AC) return;
       ctx = new AC();
     }
-    if (ctx.state === 'suspended') ctx.resume();
+    // 'suspended'만 보면 안 된다. iOS에는 전화·화면잠금·타 앱 오디오 개입으로 들어가는
+    // **'interrupted'** 상태가 따로 있어서, 그것만 걸리면 이후 영영 무음이 된다.
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
   } catch {
     // 소리는 없어도 게임은 돌아가야 한다.
   }
+}
+
+/** 소리가 실제로 날 수 있는 상태인가. 디버깅·테스트용. */
+export function state() {
+  return ctx ? ctx.state : 'none';
 }
 
 function tone({ freq, dur, type = 'sine', gain = 0.14, slideTo = null, delay = 0 }) {
