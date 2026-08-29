@@ -8,8 +8,8 @@
 import {
   T, THREAT_SCORE, classifyWindowString, threatAt, analyzeMove,
   doubleThreatBonus, lineScore, evalPosition,
-} from '../www/js/patterns.js';
-import { BLACK, WHITE, CELLS, SIZE, idx } from '../www/js/board.js';
+} from '../www/omok/js/patterns.js';
+import { BLACK, WHITE, CELLS, SIZE, idx } from '../www/omok/js/board.js';
 import { ok, eq, report } from './_assert.js';
 
 const NAME = ['없음', '막힌2', '열린2', '막힌3', '열린3', '막힌4', '열린4', '5목'];

@@ -9,8 +9,8 @@
  *   --time 은 어려움 난이도의 수당 사고 시간. 실제 대국은 1500ms지만
  *   수십 판을 돌리려면 낮춰야 한다 (1500ms × 25수 × 36판 = 22분).
  */
-import { Board, BLACK, WHITE, EMPTY, CELLS, idx } from '../www/js/board.js';
-import { AI, LEVEL, makeRng } from '../www/js/ai.js';
+import { Board, BLACK, WHITE, EMPTY, CELLS, idx } from '../www/omok/js/board.js';
+import { AI, LEVEL, makeRng } from '../www/omok/js/ai.js';
 
 const argv = process.argv.slice(2);
 const argOf = (name, dflt) => {

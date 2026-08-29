@@ -13,9 +13,9 @@ import { ok, eq, report } from './_assert.js';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 
-const html = read('www/index.html');
-const gameJs = read('www/js/game.js');
-const uiJs = read('www/js/ui.js');
+const html = read('www/omok/index.html');
+const gameJs = read('www/omok/js/game.js');
+const uiJs = read('www/omok/js/ui.js');
 
 const all = (text, re) => [...text.matchAll(re)].map((m) => m[1]);
 const uniq = (a) => [...new Set(a)];
@@ -68,12 +68,12 @@ for (const sel of uniq(all(gameJs, /selectChip\('#([^']+)'/g))) {
 
 // --- HTML이 참조하는 파일이 실제로 있는가 ----------------------------------------
 for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<script[^>]+src="([^"]+)"/g)]) {
-  ok(`참조 파일이 존재한다: ${href}`, existsSync(join(ROOT, 'www', href)));
+  ok(`참조 파일이 존재한다: ${href}`, existsSync(join(ROOT, 'www/omok', href)));
 }
 
 // --- 화면 이름이 CSS와 맞는가 ----------------------------------------------------
 {
-  const css = read('www/css/style.css');
+  const css = read('www/omok/css/style.css');
   const screens = uniq(all(gameJs, /setScreen\('([^']+)'\)/g));
   for (const s of screens) {
     ok(`화면 '${s}' 을 보여주는 CSS 규칙이 있다`,
@@ -83,7 +83,7 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
 
 // --- 저장 키가 설정 UI와 맞는가 ---------------------------------------------------
 {
-  const storage = read('www/js/storage.js');
+  const storage = read('www/omok/js/storage.js');
   for (const key of ['sound', 'vibrate', 'instant', 'level', 'first']) {
     ok(`설정 키 '${key}' 가 저장 기본값에 있다`, new RegExp(`^\\s+${key}:`, 'm').test(storage));
   }
@@ -95,8 +95,8 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
 
 // --- 크기 지정 권한이 한 곳에만 있는가 (실제로 났던 결함) ---------------------------
 {
-  const css = read('www/css/style.css');
-  const renderJs = read('www/js/render.js');
+  const css = read('www/omok/css/style.css');
+  const renderJs = read('www/omok/js/render.js');
 
   ok('render.js가 캔버스 크기를 직접 지정한다', /style\.width\s*=/.test(renderJs));
 
@@ -115,7 +115,7 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
 
 // --- 화면 배치 조건 ------------------------------------------------------------------
 {
-  const css = read('www/css/style.css');
+  const css = read('www/omok/css/style.css');
   // 아이패드는 눕혀도 높이가 800px 안팎이라 옆구리 배치가 오히려 손해다.
   // 조건이 "가로"만이면 넓은 화면에서 판이 쓸데없이 작아진다.
   const landscape = css.match(/@media\s*\(orientation:\s*landscape\)([^{]*)\{/);
@@ -126,8 +126,8 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
 
 // --- 홈 화면에 추가 (아이패드) -------------------------------------------------------
 {
-  ok('매니페스트가 존재한다', existsSync(join(ROOT, 'www/manifest.webmanifest')));
-  const mf = JSON.parse(read('www/manifest.webmanifest'));
+  ok('매니페스트가 존재한다', existsSync(join(ROOT, 'www/omok/manifest.webmanifest')));
+  const mf = JSON.parse(read('www/omok/manifest.webmanifest'));
 
   eq('전체화면으로 뜬다', mf.display, 'standalone');
   // 하위 경로(/omok/)로 서빙되므로 절대경로를 쓰면 홈 화면에서 열 때 404가 난다.
@@ -135,7 +135,7 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
   ok('scope가 상대경로', !mf.scope.startsWith('/'), `실제: ${mf.scope}`);
 
   for (const icon of mf.icons) {
-    ok(`매니페스트 아이콘이 실제로 있다: ${icon.src}`, existsSync(join(ROOT, 'www', icon.src)));
+    ok(`매니페스트 아이콘이 실제로 있다: ${icon.src}`, existsSync(join(ROOT, 'www/omok', icon.src)));
     ok(`아이콘 경로가 상대경로: ${icon.src}`, !icon.src.startsWith('/'));
   }
 
@@ -143,13 +143,13 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
   const touchIcon = html.match(/<link[^>]+rel="apple-touch-icon"[^>]+href="([^"]+)"/);
   ok('apple-touch-icon이 선언돼 있다', touchIcon !== null);
   if (touchIcon) {
-    ok(`apple-touch-icon 파일이 있다: ${touchIcon[1]}`, existsSync(join(ROOT, 'www', touchIcon[1])));
+    ok(`apple-touch-icon 파일이 있다: ${touchIcon[1]}`, existsSync(join(ROOT, 'www/omok', touchIcon[1])));
   }
   ok('HTML이 매니페스트를 참조한다', /rel="manifest"/.test(html));
   ok('iOS 전체화면 메타가 있다', /name="apple-mobile-web-app-capable"/.test(html));
 
   // 상태바 아래까지 그리므로 safe-area 여백이 없으면 HUD가 노치·상태바에 가린다.
-  const css = read('www/css/style.css');
+  const css = read('www/omok/css/style.css');
   const translucent = /content="black-translucent"/.test(html);
   ok('상태바 아래까지 쓰면 safe-area 여백이 있어야 한다',
     !translucent || /env\(safe-area-inset-top\)/.test(css));
@@ -157,7 +157,7 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
 
 // --- 오디오 잠금 해제 위치 (iOS에서 실제로 무음이던 결함) ----------------------------
 {
-  const audioJs = read('www/js/audio.js');
+  const audioJs = read('www/omok/js/audio.js');
 
   // HTML 명세가 사용자 활성화를 주는 이벤트: click · keydown · mousedown ·
   // pointerup(마우스 아닐 때) · touchend. **손가락 pointerdown은 주지 않는다.**
@@ -186,8 +186,8 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
 
 // --- 오프라인 (서비스 워커) ----------------------------------------------------------
 {
-  ok('서비스 워커가 존재한다', existsSync(join(ROOT, 'www/sw.js')));
-  const sw = read('www/sw.js');
+  ok('서비스 워커가 존재한다', existsSync(join(ROOT, 'www/omok/sw.js')));
+  const sw = read('www/omok/sw.js');
 
   ok('game.js가 서비스 워커를 등록한다', /serviceWorker\.register\('\.\/sw\.js'\)/.test(sw ? gameJs : ''));
 
@@ -205,8 +205,8 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
     ok(`캐시 목록에 있다: ${f}`, cached.includes(f));
   }
 
-  // www/js 아래 파일이 늘었는데 캐시 목록에 안 넣는 것을 잡는다.
-  const jsFiles = [...new Set(all(read('www/index.html'), /src="js\/([^"]+)"/g))];
+  // www/omok/js 아래 파일이 늘었는데 캐시 목록에 안 넣는 것을 잡는다.
+  const jsFiles = [...new Set(all(read('www/omok/index.html'), /src="js\/([^"]+)"/g))];
   ok('HTML이 부르는 스크립트가 캐시에 있다',
     jsFiles.every((f) => cached.includes(`./js/${f}`)), `HTML 스크립트: ${jsFiles.join(', ')}`);
 
@@ -219,7 +219,7 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
 
 // --- 워커 경로 ---------------------------------------------------------------------
 {
-  ok('ai-worker.js가 존재한다', existsSync(join(ROOT, 'www/js/ai-worker.js')));
+  ok('ai-worker.js가 존재한다', existsSync(join(ROOT, 'www/omok/js/ai-worker.js')));
   ok('워커를 모듈 타입으로 만든다', /type:\s*'module'/.test(gameJs),
     'type:module이 없으면 워커 안에서 import가 죽는다');
 }

@@ -5,7 +5,7 @@
 import {
   Board, BLACK, WHITE, EMPTY, CELLS, SIZE,
   findWinLine, idx, parseCells, undoToLastOwn, canUndoOwn,
-} from '../www/js/board.js';
+} from '../www/omok/js/board.js';
 import { ok, eq, eqArr, report } from './_assert.js';
 
 /** 지정 좌표들에 색을 채운 cells를 만든다. */

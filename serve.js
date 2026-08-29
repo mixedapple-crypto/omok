@@ -27,7 +27,9 @@ const TYPES = {
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
-    const rel = decodeURIComponent(url.pathname) === '/' ? '/index.html' : decodeURIComponent(url.pathname);
+    const p = decodeURIComponent(url.pathname);
+    // 디렉터리 경로(/omok/ 등)는 index.html로 — GitHub Pages와 동일한 동작
+    const rel = p.endsWith('/') ? p + 'index.html' : p;
     const path = normalize(join(ROOT, rel));
 
     // 경로 탈출 차단 — 개발 서버라도 www 밖을 내주지 않는다.

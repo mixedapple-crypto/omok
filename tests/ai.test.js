@@ -4,9 +4,9 @@
  * selfplay는 승률만 알려주고 원인을 못 짚는다. 특히 "이긴 판을 안 두고 막는" 버그는
  * 승률에 조금씩만 드러나 끝까지 안 잡힌다. 그래서 국면을 직접 만들어 단언한다.
  */
-import { AI, LEVEL, makeRng, candidates, findVcf } from '../www/js/ai.js';
-import { BLACK, WHITE, CELLS, idx } from '../www/js/board.js';
-import { analyzeMove } from '../www/js/patterns.js';
+import { AI, LEVEL, makeRng, candidates, findVcf } from '../www/omok/js/ai.js';
+import { BLACK, WHITE, CELLS, idx } from '../www/omok/js/board.js';
+import { analyzeMove } from '../www/omok/js/patterns.js';
 import { ok, eq, report } from './_assert.js';
 
 const P = (r, c) => idx(r, c);

@@ -42,8 +42,8 @@ jobs:
       # 언젠가 깜빡하고, 그러면 아이 아이패드에 옛 버전이 영영 남는다.
       - name: 캐시 버전 주입
         run: |
-          sed -i "s/__BUILD__/${GITHUB_SHA::12}/" www/sw.js
-          grep -n "const VERSION" www/sw.js
+          sed -i "s/__BUILD__/${GITHUB_SHA::12}/" www/omok/sw.js
+          grep -n "const VERSION" www/omok/sw.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

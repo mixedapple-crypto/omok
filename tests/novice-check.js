@@ -10,9 +10,9 @@
  *
  * 사용: node tests/novice-check.js [--games N]
  */
-import { Board, BLACK, WHITE, EMPTY, CELLS, idx } from '../www/js/board.js';
-import { AI, LEVEL, makeRng, candidates } from '../www/js/ai.js';
-import { analyzeMove } from '../www/js/patterns.js';
+import { Board, BLACK, WHITE, EMPTY, CELLS, idx } from '../www/omok/js/board.js';
+import { AI, LEVEL, makeRng, candidates } from '../www/omok/js/ai.js';
+import { analyzeMove } from '../www/omok/js/patterns.js';
 
 const argv = process.argv.slice(2);
 const gi = argv.indexOf('--games');

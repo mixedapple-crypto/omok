@@ -5,7 +5,7 @@
  * 멀쩡해 보여서 눈으로 못 잡는다. 반면 순수 계산이라 캔버스를 흉내 내면 정확히 잴 수 있다.
  * 원인은 대개 하나다 — CSS 픽셀(getBoundingClientRect)과 캔버스 내부 해상도(DPR 배수)를 섞는 것.
  */
-import { Board, SIZE, idx, rowOf, colOf } from '../www/js/board.js';
+import { Board, SIZE, idx, rowOf, colOf } from '../www/omok/js/board.js';
 import { ok, eq, report } from './_assert.js';
 
 /** 어떤 메서드 호출도 받아주는 2D 컨텍스트 흉내. 그리기 결과는 검사하지 않는다. */
@@ -47,7 +47,7 @@ async function makeRenderer(size, dpr, left = 0, top = 0) {
   globalThis.getComputedStyle = () => ({
     paddingLeft: '0px', paddingRight: '0px', paddingTop: '0px', paddingBottom: '0px',
   });
-  const { Renderer } = await import('../www/js/render.js');
+  const { Renderer } = await import('../www/omok/js/render.js');
   return new Renderer(stubCanvas(size, left, top));
 }
 

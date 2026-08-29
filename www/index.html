@@ -2,120 +2,74 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<!-- user-scalable=no: 아이가 두 손가락으로 판을 확대해버리면 착수가 어긋난다 -->
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#2b1d12">
-<title>오목</title>
-
-<!-- 홈 화면에 추가했을 때 앱처럼 보이게 하는 설정.
-     경로는 전부 상대경로다 — GitHub Pages처럼 하위 경로(/omok/)로 서빙돼도 그대로 동작한다. -->
-<link rel="manifest" href="manifest.webmanifest">
-<!-- apple-touch-icon이 없으면 iOS가 **페이지 스크린샷을 아이콘으로** 써버린다. -->
-<link rel="apple-touch-icon" href="icons/icon-180.png">
-<meta name="apple-mobile-web-app-title" content="오목">
-<!-- 표준은 mobile-web-app-capable이지만 iOS는 아직 apple- 접두사 쪽을 본다. 둘 다 둔다. -->
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<!-- 상태바 아래까지 화면을 쓴다. 잘림은 CSS의 env(safe-area-inset-*)가 막는다. -->
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-<link rel="stylesheet" href="css/style.css">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>우리집 게임숲</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+  /* ===== 게임 링크는 아래 <a href="..."> 두 곳만 고치면 됩니다 ===== */
+  :root{
+    --paper:#FFF6E8; --meadow:#63B95D; --meadow-deep:#3E8C4A;
+    --coral:#FF8A5C; --coral-deep:#E96F41; --sky:#BFE4F5;
+    --ink:#41372A; --ink-soft:#8A7B66; --card:#FFFFFF; --gold:#F5B840;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html{color-scheme:light}
+  body{
+    background:linear-gradient(180deg,var(--sky) 0%,#DFF0D8 40%,var(--paper) 75%);
+    color:var(--ink); font-family:'Noto Sans KR',system-ui,sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px 16px;
+  }
+  .wrap{width:100%;max-width:440px;text-align:center}
+  h1{font-family:'Jua','Noto Sans KR',sans-serif;font-weight:400;font-size:34px;color:var(--meadow-deep);text-shadow:0 2px 0 #fff}
+  .sub{color:var(--ink-soft);margin-top:6px;font-size:15px}
+  .games{display:flex;flex-direction:column;gap:16px;margin-top:28px}
+  a.game{
+    display:flex;align-items:center;gap:16px;text-decoration:none;color:var(--ink);
+    background:var(--card);border-radius:22px;padding:18px 20px;text-align:left;
+    box-shadow:0 5px 0 rgba(65,55,42,.13);border:3px solid transparent;
+    transition:transform .08s;position:relative;
+  }
+  a.game:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(65,55,42,.13)}
+  a.game:focus-visible{outline:3px solid var(--coral);outline-offset:3px}
+  .icon{font-size:52px;line-height:1;width:64px;text-align:center;filter:drop-shadow(0 3px 0 rgba(65,55,42,.15))}
+  .t{display:flex;flex-direction:column;min-width:0}
+  .t .nm{font-family:'Jua';font-size:22px}
+  .t .ds{font-size:13.5px;color:var(--ink-soft);margin-top:3px}
+  .go{margin-left:auto;font-family:'Jua';font-size:22px;color:var(--coral-deep)}
+  .badge{
+    position:absolute;top:-10px;right:14px;background:var(--coral);color:#fff;
+    font-family:'Jua';font-size:12.5px;padding:3px 12px;border-radius:999px;
+    box-shadow:0 2px 0 var(--coral-deep);
+  }
+  .num1{border-color:#CBB9A0}
+  .num2{border-color:var(--meadow)}
+  footer{margin-top:26px;font-size:12px;color:var(--ink-soft)}
+</style>
 </head>
 <body>
-<div id="app" data-screen="menu">
-
-  <!-- ── 메인 메뉴 ─────────────────────────────────────────────── -->
-  <section class="screen screen-menu">
-    <h1 class="logo">오목</h1>
-    <p class="tagline">다섯 개를 먼저 이으면 이겨요</p>
-
-    <div class="menu-buttons">
-      <button class="btn btn-big" data-action="solo">혼자 하기</button>
-      <button class="btn btn-big" data-action="duo">둘이 하기</button>
-      <button class="btn btn-ghost" data-action="settings">설정</button>
-    </div>
-
-    <p class="record" id="record"></p>
-  </section>
-
-  <!-- ── 혼자 하기 설정 ────────────────────────────────────────── -->
-  <section class="screen screen-solo">
-    <h2 class="sub-title">혼자 하기</h2>
-
-    <fieldset class="choice">
-      <legend>얼마나 세게 할까요?</legend>
-      <div class="choice-row" id="level-choice">
-        <button class="chip" data-level="easy">쉬움<small>3을 만들면 이겨요</small></button>
-        <button class="chip" data-level="normal">보통<small>가끔 실수해요</small></button>
-        <button class="chip" data-level="hard">어려움<small>실수하지 않아요</small></button>
-      </div>
-    </fieldset>
-
-    <fieldset class="choice">
-      <legend>누가 먼저 둘까요?</legend>
-      <div class="choice-row" id="first-choice">
-        <button class="chip" data-first="me"><span class="dot black"></span>내가 먼저</button>
-        <button class="chip" data-first="ai"><span class="dot white"></span>컴퓨터 먼저</button>
-      </div>
-    </fieldset>
-
-    <div class="menu-buttons">
-      <button class="btn btn-big" data-action="start-solo">시작!</button>
-      <button class="btn btn-ghost" data-action="back-menu">뒤로</button>
-    </div>
-  </section>
-
-  <!-- ── 게임 ──────────────────────────────────────────────────── -->
-  <section class="screen screen-game">
-    <header class="hud">
-      <div class="turn" id="turn-label">
-        <span class="dot black" id="turn-dot"></span>
-        <span id="turn-text">내 차례</span>
-      </div>
-      <button class="btn-icon" data-action="back-menu" aria-label="메뉴로">✕</button>
-    </header>
-
-    <div class="board-wrap">
-      <canvas id="board" aria-label="오목판"></canvas>
-    </div>
-
-    <footer class="controls">
-      <button class="btn btn-sub" data-action="undo" id="btn-undo">무르기</button>
-      <button class="btn btn-place" data-action="place" id="btn-place" disabled>여기 놓기</button>
-      <button class="btn btn-sub" data-action="restart">다시</button>
-    </footer>
-  </section>
-
-  <!-- ── 결과 ──────────────────────────────────────────────────── -->
-  <div class="overlay" id="result-overlay" hidden>
-    <div class="card">
-      <p class="result-emoji" id="result-emoji">🎉</p>
-      <h2 class="result-text" id="result-text">이겼다!</h2>
-      <div class="menu-buttons">
-        <button class="btn btn-big" data-action="restart">한 판 더</button>
-        <button class="btn btn-ghost" data-action="back-menu">메뉴로</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── 설정 ──────────────────────────────────────────────────── -->
-  <div class="overlay" id="settings-overlay" hidden>
-    <div class="card">
-      <h2 class="sub-title">설정</h2>
-      <label class="toggle"><input type="checkbox" id="opt-sound"><span>소리</span></label>
-      <label class="toggle"><input type="checkbox" id="opt-vibrate"><span>진동</span></label>
-      <label class="toggle"><input type="checkbox" id="opt-instant"><span>한 번 눌러 바로 놓기</span></label>
-      <p class="hint">끄면 두 번 눌러야 놓입니다. 잘못 짚어도 다시 고를 수 있어요.</p>
-      <div class="menu-buttons">
-        <button class="btn btn-big" data-action="close-settings">닫기</button>
-        <button class="btn btn-ghost" data-action="reset-record">전적 지우기</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="confetti" aria-hidden="true"></div>
-</div>
-
-<script type="module" src="js/game.js"></script>
+  <main class="wrap">
+    <h1>🌳 우리집 게임숲</h1>
+    <p class="sub">오늘은 어떤 놀이를 해볼까?</p>
+    <nav class="games">
+      <a class="game num1" href="./omok/">
+        <span class="icon">⚫</span>
+        <span class="t">
+          <span class="nm">1. 오목</span>
+          <span class="ds">다섯 개를 먼저 이으면 승리!</span>
+        </span>
+        <span class="go">▶</span>
+      </a>
+      <a class="game num2" href="./math/">
+        <span class="badge">새로 나왔어!</span>
+        <span class="icon">🐶</span>
+        <span class="t">
+          <span class="nm">2. 더하기 빼기</span>
+          <span class="ds">숫자숲 친구들 — 악당을 물리치고 친구를 구하자</span>
+        </span>
+        <span class="go">▶</span>
+      </a>
+    </nav>
+    <footer>즐겁게 놀고, 눈도 쉬어 가면서! 🍀</footer>
+  </main>
 </body>
 </html>

@@ -12,7 +12,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'www', 'icons');
+const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'www', 'omok', 'icons');
 
 // --- PNG 인코딩 -------------------------------------------------------------
 
@@ -170,4 +170,4 @@ for (const size of [180, 192, 512]) {
   writeFileSync(path, png);
   console.log(`${path}  ${size}×${size}  ${(png.length / 1024).toFixed(1)}KB`);
 }
-console.log('\n완료. www/icons/ 에 생성했다.');
+console.log('\n완료. www/omok/icons/ 에 생성했다.');
