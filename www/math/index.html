@@ -330,13 +330,9 @@ function makeProblem(stage,pool){
   return genByType(pickType(stage));
 }
 
-/* 일반: 최소 6번(전부 크리티컬이어도), 보스: 최소 10번 맞혀야 쓰러짐 (크리티컬 15 기준) */
+/* 일반: 최소 7번(전부 크리티컬이어도), 보스: 최소 11번 맞혀야 쓰러짐 (크리티컬 15 기준) */
 function foeMaxHP(stage,isBoss){
   return isBoss?150+stage:90+stage;
-}
-
-if(typeof module!=='undefined'&&module.exports){
-  module.exports={TYPES:TYPES,MIX:MIX,genByType:genByType,pickType:pickType,makeProblem:makeProblem,foeMaxHP:foeMaxHP};
 }
 
 /* ================= 게임 데이터 ================= */
@@ -353,7 +349,15 @@ var ANIMALS=[
   {f:'🦇',n:'박쥐단'},{f:'👾',n:'몬몬이'},{f:'👻',n:'유령콩'},{f:'🎃',n:'호박귀신'},{f:'🦉',n:'부엉이',boss:1},
   {f:'☃️',n:'심술눈사람'},{f:'🧊',n:'얼음괴물'},{f:'🐺',n:'늑대두목'},{f:'👹',n:'도깨비'},{f:'🐻‍❄️',n:'얼음곰',boss:1}
 ];
-var PET_FORMS=[{minLv:8,f:'🦮',n:'슈퍼 콩이'},{minLv:4,f:'🐕',n:'씩씩한 콩이'},{minLv:1,f:'🐶',n:'콩이'}];
+/* 내림차순으로 둔다 — petFormFor가 위에서부터 첫 일치를 고른다 */
+var PET_FORMS=[
+  {minLv:30,f:'🐉',n:'전설의 콩이'},
+  {minLv:20,f:'🦄',n:'무지개 콩이'},
+  {minLv:13,f:'🦊',n:'요술 콩이'},
+  {minLv:8, f:'🦮',n:'슈퍼 콩이'},
+  {minLv:4, f:'🐕',n:'씩씩한 콩이'},
+  {minLv:1, f:'🐶',n:'콩이'}
+];
 var HINTS={
   A1c:'💡 10 만들기! 앞의 수에 몇을 더하면 10이 될까? 그리고 남은 만큼 더 더하자',
   S2t:'💡 10에서 먼저 빼보자! 13-6은 10-6 하고, 남은 3을 더하면 돼',
@@ -364,7 +368,30 @@ var HINTS={
 var PRAISE=['정답! ✨','멋져! 🎉','대단해! 💪','천재인걸? 🌟','완벽해! 🍀'];
 var CHEER=['괜찮아, 다시 한번!','아깝다! 한 번 더 해보자!','천천히 다시 세어보자!'];
 
-var ME_MAX=50, ATK=10, CRIT=15, FOE_ATK=8, XP_PER_LV=25;
+var ME_MAX=50, ATK=10, CRIT=15, FOE_ATK=8;
+
+/* ================= 레벨 곡선 =================
+   Lv.N에 도달하는 데 드는 누적 경험치 = 2*(N-1)*(N+4)
+   레벨 간 간격이 12 → 16 → 20 → 24 …로 4씩 벌어진다. 올라갈수록 어려워진다.
+   Lv.8까지는 옛 곡선(레벨당 25 고정)보다 항상 싸다 — 이미 저장된 아이 데이터의
+   레벨이 내려가 콩이가 퇴화하는 일이 없도록 일부러 맞춘 값이다. Lv.9부터 비싸진다. */
+function xpForLevel(n){return 2*(n-1)*(n+4);}
+function levelFromXp(xp){
+  var n=1;
+  /* 상한은 저장 데이터가 깨져 거대한 값이 들어와도 루프가 멈추게 하는 안전장치다 */
+  while(n<999&&xpForLevel(n+1)<=xp)n++;
+  return n;
+}
+function petFormFor(lv){
+  var i;
+  for(i=0;i<PET_FORMS.length;i++){if(lv>=PET_FORMS[i].minLv)return PET_FORMS[i];}
+  return PET_FORMS[PET_FORMS.length-1];
+}
+
+if(typeof module!=='undefined'&&module.exports){
+  module.exports={TYPES:TYPES,MIX:MIX,genByType:genByType,pickType:pickType,makeProblem:makeProblem,
+    foeMaxHP:foeMaxHP,xpForLevel:xpForLevel,levelFromXp:levelFromXp,petFormFor:petFormFor,PET_FORMS:PET_FORMS};
+}
 
 /* ================= 저장 ================= */
 var KEY='numforest-v2';
@@ -420,8 +447,8 @@ if(typeof document!=='undefined'){(function(){
   }
 
   /* --- 펫 --- */
-  function petLv(){return 1+Math.floor(S.xp/XP_PER_LV);}
-  function petForm(){var lv=petLv(),i;for(i=0;i<PET_FORMS.length;i++){if(lv>=PET_FORMS[i].minLv)return PET_FORMS[i];}return PET_FORMS[PET_FORMS.length-1];}
+  function petLv(){return levelFromXp(S.xp);}
+  function petForm(){return petFormFor(petLv());}
 
   /* --- 홈 --- */
   function questRow(el,done,label,coin,prog){
@@ -437,8 +464,10 @@ if(typeof document!=='undefined'){(function(){
     var pf=petForm();
     $('pet-face').textContent=pf.f;
     $('pet-name').textContent=pf.n;
-    $('pet-lv').textContent='Lv.'+petLv()+' · 친구 '+S.dex.length+'/4 · 악당 격파 '+(S.cleared-Math.floor(S.cleared/5))+'/16';
-    $('pet-xp').style.width=((S.xp%XP_PER_LV)/XP_PER_LV*100)+'%';
+    /* 레벨이 올라갈수록 한 칸이 길어지니 "다음까지 얼마"를 숫자로도 보여준다 */
+    var lv=petLv(), cur=xpForLevel(lv), nxt=xpForLevel(lv+1);
+    $('pet-lv').textContent='Lv.'+lv+' · 다음까지 '+(nxt-S.xp)+' · 친구 '+S.dex.length+'/4 · 악당 '+(S.cleared-Math.floor(S.cleared/5))+'/16';
+    $('pet-xp').style.width=((S.xp-cur)/(nxt-cur)*100)+'%';
     $('btn-sound').textContent=S.sound?'🔊':'🔇';
     renderMap();
   }

@@ -27,7 +27,8 @@ jobs:
         with:
           node-version: '22'
       # 의존성이 0이라 설치 단계가 없다. npm test가 node를 직접 부른다.
-      - name: 단위 테스트 243개
+      # 개수를 이름에 박지 않는다 — 테스트를 늘릴 때마다 라벨이 거짓말이 된다.
+      - name: 단위 테스트
         run: npm test
 
   deploy:
