@@ -44,10 +44,19 @@ self.addEventListener('install', (e) => {
   );
 });
 
+/**
+ * 옛 버전 정리.
+ *
+ * ⚠️ 반드시 `omok-` 접두사로 걸러야 한다. 캐시 저장소는 **출처 단위로 공유**되므로
+ * "내 것이 아닌 건 지운다"로 짜면 포털 워커(portal-*)의 캐시까지 지운다. 그러면
+ * 배포할 때마다 두 워커가 서로의 캐시를 없애 오프라인이 조용히 깨진다.
+ */
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(
+        keys.filter((k) => k.startsWith('omok-') && k !== CACHE).map((k) => caches.delete(k)),
+      ))
       .then(() => self.clients.claim()),
   );
 });

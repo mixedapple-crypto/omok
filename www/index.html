@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>우리집 게임숲</title>
+<meta name="theme-color" content="#BFE4F5">
+<link rel="manifest" href="manifest.webmanifest">
+<!-- apple-touch-icon이 없으면 iOS가 **페이지 스크린샷을 아이콘으로** 써버린다. -->
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="게임숲">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <style>
   /* ===== 게임 링크는 아래 <a href="..."> 두 곳만 고치면 됩니다 ===== */
@@ -71,5 +77,19 @@
     </nav>
     <footer>즐겁게 놀고, 눈도 쉬어 가면서! 🍀</footer>
   </main>
+<script>
+  /*
+   * 오프라인 지원. 실패해도 포털은 정상 동작하므로 조용히 넘어간다.
+   * 경로는 상대경로여야 한다 — GitHub Pages가 하위 경로(/omok/)로 서빙한다.
+   */
+  if ('serviceWorker' in navigator
+      && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function (err) {
+        console.warn('[게임숲] 오프라인 지원 등록 실패(포털은 정상):', err);
+      });
+    });
+  }
+</script>
 </body>
 </html>
