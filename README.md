@@ -19,6 +19,10 @@
   2구역은 곱한 값만 두 판 → 몫과 뺀 값 두 판 → 몫만 보스, 4구역은 몫만 넣고 바로 보여주는 두 판 →
   몫과 뺀 값 두 판 → 몫만 보스다 — 곱셈과 같이 보스는 도움만 걷어낸다.
   구역을 늘리려면 `ZONES` · `ANIMALS` · `MIX` 세 배열을 이어 붙이면 스테이지 수가 알아서 늘어난다.
+- **구구단 로켓** (`www/gugudan/`) — 구구단 자동화 훈련. 하루 7분: 연료 채우기(엔진이 고른 24문제) →
+  로켓 레이스(자기 최근 5회 중간값 유령과 경주) → 구두 카드 → 거꾸로 암송. 사실 72개마다 답 시간과 정확도를
+  기록해 약한 것을 더 자주 내되 잘 아는 것도 굶기지 않는다. 최종 목표는 **거꾸로 36초**이고 그 전에
+  무작위 72개 구두 인증을 부모와 한다. 규칙의 사람용 정본은 [구구단 로켓 지침서](documents/구구단-로켓-지침서.md)다.
 - **의존성 0** — 프레임워크도 빌드 도구도 없다. 광고 SDK가 끼어들 여지도 없다.
 - `www/`에 있는 것이 그대로 APK가 된다 (Capacitor의 기본 webDir)
 
@@ -36,7 +40,7 @@ CORS로 전부 죽어 백지 화면이 된다. 반드시 서버로 띄운다.
 ## 검증
 
 ```bash
-npm test            # 단위 테스트 (board · patterns · ai · render · wiring · tactics · puzzle · lessons · coach · 문서 동기화 · math · mul)
+npm test            # 단위 테스트 (오목 · 오목 교실 · 구구단 로켓 엔진/시뮬레이션/배선/흐름 · 문서 동기화 · math · mul)
 npm run selfplay    # AI끼리 대국시켜 난이도 서열 확인 — 10분 이상 걸린다
 ```
 
@@ -56,6 +60,19 @@ www/                  ← 이대로 APK에 들어간다
 ├─ math/index.html    숫자숲 친구들 전체 (로직·화면·CSS가 한 파일)
 ├─ mul/index.html     곱셈 바다 전체. math/를 복사해 문제·입력부만 바꾼 것이라
 │                     전투·용돈·퀘스트·도감 흐름이 같다
+├─ gugudan/           구구단 로켓. index.html + css + sw.js(스코프 /gugudan/, 접두사 gugudan-) + js/
+│  ├─ js/engine.js    출제 엔진·지표·단계·인증·임무 (순수 로직, DOM·Date.now() 없음). 계약은 _workspace/design/gugudan-spec.md
+│  ├─ js/store.js     localStorage(gugudan.v1)·연습 모드·내보내기
+│  └─ js/app.js, ui.js, audio.js   화면 흐름·DOM·효과음
+├─ gugudan/
+│  ├─ index.html      구구단 로켓 화면 9개(홈·연료 채우기·항로 고르기·레이스·결과·구두 카드·암송·부모·인증)
+│  ├─ sw.js           구구단 오프라인 캐시(스코프 /gugudan/, 접두사 gugudan-). 배포 시 커밋 SHA가 주입된다
+│  ├─ css/style.css
+│  └─ js/
+│     ├─ engine.js    출제 엔진·지표·단계·인증·임무 (순수 로직, DOM·Date.now() 없음)
+│     ├─ store.js     localStorage 저장·연습 모드·내보내기
+│     ├─ ui.js        DOM 조작만
+│     └─ app.js       화면 흐름 총괄 (숫자판 타이밍·유령 로켓·암송·인증)
 └─ omok/
    ├─ index.html      화면 5개(메뉴·설정·게임·교실 목록·레슨)를 data-screen 토글로 전환
    ├─ sw.js           오목 오프라인 캐시. 배포 시 커밋 SHA가 주입된다

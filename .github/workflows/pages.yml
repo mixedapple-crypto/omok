@@ -43,15 +43,16 @@ jobs:
       # 언젠가 깜빡하고, 그러면 아이 아이패드에 옛 버전이 영영 남는다.
       - name: 캐시 버전 주입
         run: |
-          for f in www/sw.js www/omok/sw.js; do
+          # 포털 화면(www/index.html)에도 같은 값을 박는다 — 부모가 기기가 최신인지 눈으로 확인하는 용도.
+          for f in www/sw.js www/omok/sw.js www/index.html www/gugudan/sw.js; do
             sed -i "s/__BUILD__/${GITHUB_SHA::12}/" "$f"
             # 치환이 실제로 됐는지 확인한다. 자리표시자가 그대로 남으면 캐시 이름이
             # 배포마다 같아져서 기기에 옛 버전이 영영 박힌다 — 조용히 지나가면 안 된다.
             if grep -q "__BUILD__" "$f"; then
               echo "::error::$f 의 __BUILD__ 치환 실패"; exit 1
             fi
-            grep -n "const VERSION" "$f"
           done
+          grep -n "const VERSION" www/sw.js www/omok/sw.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

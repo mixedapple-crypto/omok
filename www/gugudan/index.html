@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- user-scalable=no: 숫자판을 두 손가락으로 확대해버리면 키가 화면 밖으로 나간다 -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#17133f">
+<title>구구단 로켓</title>
+
+<meta name="apple-mobile-web-app-title" content="구구단 로켓">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- 시안과 같은 글꼴. 외부 리소스는 이 두 줄이 전부다. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@500;700;800;900&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app" data-screen="home">
+
+  <!-- ── 홈 ────────────────────────────────────────────────────────── -->
+  <section class="screen screen-home space">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">🚀</span><span>구구단 로켓</span></div>
+      <div class="small-pill" id="today-pill">오늘</div>
+    </header>
+
+    <div class="home-wrap">
+      <section class="mission panel">
+        <div class="mission-kicker"><span>★</span> 오늘의 임무</div>
+        <h1 id="mission-title">준비 중</h1>
+        <p class="mission-steps" id="mission-steps"></p>
+        <div class="rocket-art" aria-hidden="true">
+          <i class="rocket-fin left"></i>
+          <i class="rocket-body"></i>
+          <i class="rocket-fin right"></i>
+        </div>
+        <div class="reward">
+          <span class="coin">30</span>
+          <span id="reward-text">임무를 마치면 용돈 30원</span>
+          <span>하루 한 번</span>
+        </div>
+      </section>
+
+      <section class="go-buttons">
+        <button class="go" data-action="go-fuel"><b>⚡ 연료 채우기</b><small>24문제 · 숫자판</small></button>
+        <button class="go" data-action="go-race"><b>🚀 로켓 레이스</b><small>항로 고르고 달리기</small></button>
+        <button class="go" data-action="go-oral"><b>🎙️ 구두 카드</b><small>10장 · 소리 내어</small></button>
+        <button class="go" data-action="go-chant"><b>↶ 거꾸로 암송</b><small>연습 · 측정</small></button>
+      </section>
+
+      <section class="fuel-panel panel">
+        <div class="section-head">
+          <h2 class="section-title">오늘의 연료</h2>
+          <span class="fuel-count" id="home-fuel-percent">0% 충전</span>
+        </div>
+        <div class="fuel-row">
+          <span aria-hidden="true">⚡</span>
+          <div class="progress-track"><div class="progress-fill" id="home-fuel-bar"></div></div>
+          <span class="subtle" id="home-fuel-count">0 / 3</span>
+        </div>
+      </section>
+
+      <section class="world-panel panel">
+        <div class="section-head">
+          <h2 class="section-title">행성 안정 지도</h2>
+          <span class="subtle" id="stage-name"></span>
+        </div>
+        <div class="planets" id="planets"></div>
+      </section>
+
+      <section class="badge-panel panel">
+        <div class="section-head">
+          <h2 class="section-title">나의 우주 배지</h2>
+          <span class="subtle" id="badge-count"></span>
+        </div>
+        <div class="badges" id="badges"></div>
+      </section>
+    </div>
+
+    <button class="parent-lock" id="parent-lock" aria-label="부모 화면 — 3초 길게 누르기">
+      <span aria-hidden="true">🔒</span>
+      <i id="lock-ring"></i>
+    </button>
+  </section>
+
+  <!-- ── 연료 채우기 ───────────────────────────────────────────────── -->
+  <section class="screen screen-fuel space">
+    <header class="training-head">
+      <button class="back" data-action="go-home" aria-label="뒤로">‹</button>
+      <div class="screen-name">연료 채우기</div>
+      <div class="counter" id="fuel-counter">0 / 24</div>
+    </header>
+
+    <div class="corner-fuel">
+      <div class="caption"><span>연료</span><span id="fuel-pct">0%</span></div>
+      <div class="progress-track"><div class="progress-fill" id="fuel-bar"></div></div>
+    </div>
+
+    <section class="problem-area">
+      <div class="problem" id="fuel-problem">· × ·</div>
+      <div class="answer-box" id="fuel-answer"></div>
+      <p class="answer-hint" id="fuel-hint">숫자를 누르고 확정</p>
+    </section>
+
+    <section class="keypad-shell">
+      <div class="keypad">
+        <button class="key" data-key="1">1</button>
+        <button class="key" data-key="2">2</button>
+        <button class="key" data-key="3">3</button>
+        <button class="key" data-key="4">4</button>
+        <button class="key" data-key="5">5</button>
+        <button class="key" data-key="6">6</button>
+        <button class="key" data-key="7">7</button>
+        <button class="key" data-key="8">8</button>
+        <button class="key" data-key="9">9</button>
+        <button class="key action" data-key="del">지우기</button>
+        <button class="key" data-key="0">0</button>
+        <button class="key action confirm" data-key="ok">확정</button>
+      </div>
+    </section>
+  </section>
+
+  <!-- ── 항로 고르기 ───────────────────────────────────────────────── -->
+  <section class="screen screen-race-pick space">
+    <header class="training-head">
+      <button class="back" data-action="go-home" aria-label="뒤로">‹</button>
+      <div class="screen-name">항로 고르기</div>
+      <div class="head-spacer" aria-hidden="true"></div>
+    </header>
+    <div class="pick-wrap">
+      <p class="pick-note">어느 항로로 날아갈까요?</p>
+      <div class="set-list" id="race-sets"></div>
+    </div>
+  </section>
+
+  <!-- ── 로켓 레이스 ───────────────────────────────────────────────── -->
+  <section class="screen screen-race space race">
+    <header class="training-head">
+      <button class="back" data-action="go-home" aria-label="뒤로">‹</button>
+      <div class="screen-name" id="race-name">로켓 레이스</div>
+      <div class="counter" id="race-counter">0 / 0</div>
+    </header>
+
+    <section class="race-stage">
+      <div class="race-title">정확하게 풀수록 항로가 안정돼요</div>
+      <div class="track one"></div>
+      <div class="track two" id="ghost-track"></div>
+      <div class="finish-line"></div>
+      <span class="track-label me">내 로켓</span>
+      <span class="track-label med" id="ghost-label">유령 로켓 · 최근 5회 중간값</span>
+      <div class="mini-rocket mine" id="rocket-mine"></div>
+      <div class="mini-rocket ghost" id="rocket-ghost"></div>
+    </section>
+
+    <section class="race-problem">
+      <span id="race-problem">· × ·</span>
+      <span class="answer-box tight" id="race-answer"></span>
+    </section>
+
+    <section class="keypad-shell">
+      <div class="keypad">
+        <button class="key" data-key="1">1</button>
+        <button class="key" data-key="2">2</button>
+        <button class="key" data-key="3">3</button>
+        <button class="key" data-key="4">4</button>
+        <button class="key" data-key="5">5</button>
+        <button class="key" data-key="6">6</button>
+        <button class="key" data-key="7">7</button>
+        <button class="key" data-key="8">8</button>
+        <button class="key" data-key="9">9</button>
+        <button class="key action" data-key="del">지우기</button>
+        <button class="key" data-key="0">0</button>
+        <button class="key action confirm" data-key="ok">확정</button>
+      </div>
+    </section>
+  </section>
+
+  <!-- ── 레이스 결과 ───────────────────────────────────────────────── -->
+  <section class="screen screen-race-result space">
+    <header class="training-head">
+      <button class="back" data-action="go-home" aria-label="뒤로">‹</button>
+      <div class="screen-name">레이스 결과</div>
+      <div class="head-spacer" aria-hidden="true"></div>
+    </header>
+    <div class="center-wrap">
+      <section class="result-card">
+        <div class="tiny-label" id="race-result-kicker">레이스 끝</div>
+        <h3 id="race-result-title">항로 안정</h3>
+        <p class="result-line" id="race-result-acc"></p>
+        <div class="compare">
+          <div>오늘<strong id="race-time-today">–</strong></div>
+          <span>비교</span>
+          <div>최근 5회<strong id="race-time-ghost">–</strong></div>
+        </div>
+        <div class="cap-row">
+          <button class="cap cap-solid" data-action="race-again">한 번 더</button>
+          <button class="cap" data-action="go-home">홈으로</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ── 구두 카드 ─────────────────────────────────────────────────── -->
+  <section class="screen screen-oral space">
+    <header class="training-head">
+      <button class="back" data-action="go-home" aria-label="뒤로">‹</button>
+      <div class="screen-name">구두 카드</div>
+      <div class="counter" id="oral-counter">0 / 10</div>
+    </header>
+
+    <main class="oral-main">
+      <div class="oral-progress">
+        <strong>목소리로 항로 열기</strong>
+        <div class="progress-track"><div class="progress-fill" id="oral-bar"></div></div>
+      </div>
+
+      <section class="oral-card">
+        <div class="problem" id="oral-problem">· × ·</div>
+        <p class="speak-note">답을 소리 내어 말한 뒤 눌러요</p>
+        <button class="reveal" data-action="oral-reveal" id="oral-reveal">답 보기</button>
+        <div class="shown-answer" id="oral-shown" hidden>
+          <div class="answer-number" id="oral-answer">–</div>
+          <div class="self-buttons">
+            <button class="right-btn" data-action="oral-right">맞았어</button>
+            <button class="wrong-btn" data-action="oral-wrong">틀렸어</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="cert-note">
+        <span aria-hidden="true">🔒</span>
+        <span><b>부모 인증은 별도 모드</b>예요 · 부모와 함께 주 1회 진행</span>
+      </aside>
+    </main>
+  </section>
+
+  <!-- ── 거꾸로 암송 ───────────────────────────────────────────────── -->
+  <section class="screen screen-chant space">
+    <header class="training-head">
+      <button class="back" data-action="go-home" aria-label="뒤로">‹</button>
+      <div class="screen-name">거꾸로 암송</div>
+      <div class="counter" id="chant-counter">0 / 72</div>
+    </header>
+
+    <main class="chant-main">
+      <div class="chant-setup" id="chant-setup">
+        <p class="chant-lead">9단 ×9 부터 2단 ×1 까지<br>거꾸로 내려와요</p>
+        <p class="chant-sub">연습은 박자를 골라 따라 읽고, 측정은 부모와 함께 해요.</p>
+        <div class="pace-row" id="chant-paces"></div>
+        <div class="cap-row">
+          <button class="cap cap-solid" data-action="chant-practice">연습 시작</button>
+          <button class="cap" data-action="chant-measure">측정 시작</button>
+        </div>
+        <p class="chant-best" id="chant-best"></p>
+      </div>
+
+      <div class="chant-run" id="chant-run" data-mode="practice" hidden>
+        <div class="progress-track"><div class="progress-fill" id="chant-bar"></div></div>
+
+        <section class="chant-card">
+          <div class="problem" id="chant-problem">· × ·</div>
+          <div class="chant-answer" id="chant-answer"></div>
+        </section>
+
+        <section class="chant-face">
+          <div class="chant-face-art" aria-hidden="true">🚀</div>
+          <p class="chant-face-text">거꾸로 외우는 중</p>
+          <p class="chant-face-sub">끝나면 부모님이 <b>정지</b>를 눌러 주세요</p>
+        </section>
+
+        <div class="chant-controls practice-only">
+          <button class="cap" data-action="chant-toggle" id="chant-toggle">잠깐 멈춤</button>
+        </div>
+        <div class="chant-controls measure-only">
+          <button class="cap cap-count" data-action="chant-error">틀림 <b id="chant-errors">0</b></button>
+          <button class="cap cap-count" data-action="chant-miss">놓침 <b id="chant-misses">0</b></button>
+          <button class="cap cap-solid" data-action="chant-stop">정지</button>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- ── 부모 관제실 ───────────────────────────────────────────────── -->
+  <section class="screen screen-parent parent-screen">
+    <header class="parent-top">
+      <div class="parent-top-row">
+        <div>
+          <h1 class="parent-title">부모 관제실</h1>
+          <div class="parent-sub">답 전체 입력 시간을 확인합니다</div>
+        </div>
+        <button class="child-chip" data-action="go-home">아이 화면으로</button>
+      </div>
+    </header>
+
+    <main class="parent-content">
+      <nav class="tabbar" id="parent-tabs" aria-label="기록 보기 전환">
+        <button class="tab" data-view="acc">정확도</button>
+        <button class="tab active" data-view="time">답 시간</button>
+        <button class="tab" data-view="last">마지막 출제</button>
+      </nav>
+
+      <section class="matrix-panel">
+        <div class="matrix-heading">
+          <h2 id="matrix-title">단별 응답 지도</h2>
+          <div class="legend"><span>좋음</span><i></i><span>주의</span></div>
+        </div>
+        <div class="matrix-scroll">
+          <table class="matrix" aria-label="2단부터 9단까지의 기록">
+            <thead>
+              <tr><th></th><th>×1</th><th>×2</th><th>×3</th><th>×4</th><th>×5</th><th>×6</th><th>×7</th><th>×8</th><th>×9</th></tr>
+            </thead>
+            <tbody id="matrix-body"></tbody>
+          </table>
+        </div>
+        <p class="parent-note" id="matrix-note"></p>
+      </section>
+
+      <section class="white-panel">
+        <h2>혼동쌍</h2>
+        <div class="confusions" id="confusions"></div>
+        <p class="parent-note">처음엔 같은 세션에 함께 내지 않다가, 이틀 정확하면 붙여서 비교합니다.</p>
+      </section>
+
+      <section class="cert-status">
+        <div>
+          <strong>이번 주 부모 인증</strong>
+          <div class="status-sub" id="cert-sub">아직</div>
+        </div>
+        <button class="cap cap-solid" data-action="cert-start">인증 시작</button>
+      </section>
+
+      <section class="cert-status money">
+        <div>
+          <strong>저금통</strong>
+          <div class="status-sub" id="coins-sub">0원</div>
+        </div>
+        <button class="cap cap-solid" data-action="payout" id="btn-payout">용돈 지급 완료</button>
+      </section>
+
+      <section class="operations">
+        <h2>운영 도구</h2>
+        <div class="op-grid">
+          <button class="op" data-action="toggle-practice"><span class="op-icon">✎</span><span>연습 모드<br><b id="practice-state">꺼짐</b></span></button>
+          <button class="op" data-action="invalidate-last"><span class="op-icon">↶</span><span>마지막 문제<br>무효화</span></button>
+          <button class="op" data-action="toggle-ghost"><span class="op-icon">👻</span><span>유령 로켓<br><b id="ghost-state">켜짐</b></span></button>
+          <button class="op caution" data-action="reset-engine"><span class="op-icon">⚙</span><span id="reset-label">엔진 초기화</span></button>
+        </div>
+        <div class="file-buttons">
+          <button data-action="export">기록 내보내기</button>
+          <button data-action="import">기록 가져오기</button>
+        </div>
+        <textarea id="io-text" class="io-text" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="내보내기를 누르면 여기에 기록 문자열이 나옵니다. 가져올 때는 여기에 붙여넣고 가져오기를 누르세요."></textarea>
+        <p class="parent-note" id="io-note"></p>
+      </section>
+    </main>
+  </section>
+
+  <!-- ── 구두 인증 ─────────────────────────────────────────────────── -->
+  <section class="screen screen-cert space">
+    <header class="training-head">
+      <button class="back" data-action="go-parent" aria-label="관제실로">‹</button>
+      <div class="screen-name">구두 인증</div>
+      <div class="counter" id="cert-counter">0 / 72</div>
+    </header>
+
+    <main class="cert-main">
+      <div class="progress-track"><div class="progress-fill" id="cert-bar"></div></div>
+
+      <section class="oral-card cert-card">
+        <div class="problem" id="cert-problem">· × ·</div>
+        <p class="speak-note">아이가 말한 답을 부모님이 눌러 주세요</p>
+      </section>
+
+      <div class="cert-buttons">
+        <button class="right-btn big" data-action="cert-right">맞음</button>
+        <button class="wrong-btn big" data-action="cert-wrong">틀림</button>
+        <button class="wrong-btn big" data-action="cert-miss">못 함</button>
+        <button class="fix-btn big" data-action="cert-fix">수정</button>
+      </div>
+      <p class="cert-tally" id="cert-tally">틀림 0 · 못 함 0 · 수정 0</p>
+    </main>
+  </section>
+
+  <!-- ── 공통 결과 카드 ────────────────────────────────────────────── -->
+  <div class="overlay" id="done-overlay" hidden>
+    <div class="done-card">
+      <div class="tiny-label" id="done-kicker"></div>
+      <h2 id="done-title"></h2>
+      <div class="done-body" id="done-body"></div>
+      <div class="cap-row">
+        <button class="cap cap-solid" data-action="done-again" id="done-again">한 번 더</button>
+        <button class="cap" data-action="go-home">홈으로</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
