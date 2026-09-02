@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>곱셈 나눗셈</title>
+<meta name="theme-color" content="#BFE4F5">
+<!-- 홈 화면에 이 페이지를 직접 추가해도 iOS가 스크린샷을 아이콘으로 쓰지 않도록.
+     매니페스트는 일부러 걸지 않는다 — 앱으로 설치하는 입구는 포털 하나로 둔다. -->
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+  /* 바다 팔레트. 숫자숲이 따뜻한 숲 색이라 이쪽은 차가운 바다 색으로 잡아
+     두 게임이 한눈에 구분되게 했다. 산호(coral)와 모래(gold)만 따뜻한 색으로 남겨
+     파란 화면에서 눌러야 할 것과 보상이 도드라지게 한다. */
+  :root{
+    --foam:#EFF8FC;       /* 물거품 — 화면 바탕 */
+    --sea:#2E9BC9;        /* 바다 */
+    --sea-deep:#16688F;
+    --coral:#FF8A5C;      /* 산호 — 버튼과 강조 */
+    --coral-deep:#E96F41;
+    --sky:#BFE4F5;
+    --ink:#1E3A47;        /* 깊은 물빛 */
+    --ink-soft:#5E7C8A;
+    --card:#FFFFFF;
+    --hp-me:#34B3A0;      /* 청록 */
+    --hp-foe:#F26D6D;
+    --gold:#F5B840;       /* 모래·보물 */
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html{color-scheme:light}
+  body{
+    background:var(--foam);
+    color:var(--ink);
+    font-family:'Noto Sans KR',system-ui,sans-serif;
+    min-height:100vh;
+  }
+  .stage-wrap{max-width:480px;margin:0 auto;min-height:100vh;position:relative;background:var(--foam)}
+  h1,h2,h3,.jua,button{font-family:'Jua','Noto Sans KR',sans-serif;font-weight:400}
+  button{cursor:pointer;border:none;color:inherit;background:none;font-size:inherit}
+  button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--coral);outline-offset:2px;border-radius:12px}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---------- screens ---------- */
+  .screen{display:none;min-height:100vh;flex-direction:column}
+  .screen.active{display:flex}
+
+  /* ---------- home ---------- */
+  #scr-home{background:linear-gradient(180deg,var(--sky) 0%,#CDEBF7 30%,var(--foam) 60%)}
+  .home-top{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 4px}
+  .logo{font-size:26px;color:var(--sea-deep);text-shadow:0 2px 0 #fff}
+  .chips{display:flex;gap:8px}
+  .chip{background:var(--card);border-radius:999px;padding:5px 12px;font-size:14px;font-weight:700;box-shadow:0 2px 0 rgba(22,58,75,.12);display:flex;align-items:center;gap:4px}
+  .chip .num{color:var(--ink)}
+  .quest{margin:8px 16px 0;background:#FFF1D2;border:2px solid var(--gold);border-radius:14px;padding:8px 14px;font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+  .quest .qt{font-family:'Jua';color:#B07A10;font-size:14px}
+  .quest .q-row{display:flex;justify-content:space-between;gap:8px}
+  .quest .q-row b{color:#B07A10;white-space:nowrap}
+  .quest .q-row.done{color:var(--sea-deep);text-decoration:none}
+  .quest .q-row.done b{color:var(--sea-deep)}
+  .pet-house{display:flex;align-items:center;gap:14px;margin:12px 16px;background:var(--card);border-radius:18px;padding:12px 16px;box-shadow:0 3px 0 rgba(22,58,75,.10)}
+  .pet-face{font-size:52px;line-height:1;filter:drop-shadow(0 3px 0 rgba(22,58,75,.15))}
+  .pet-info{flex:1}
+  .pet-name{font-size:18px;color:var(--sea-deep)}
+  .xpbar{height:10px;background:#D8E9F2;border-radius:6px;overflow:hidden;margin-top:6px}
+  .xpbar>i{display:block;height:100%;background:var(--gold);border-radius:6px;transition:width .4s}
+  .pet-lv{font-size:12px;color:var(--ink-soft);margin-top:4px}
+  .home-btns{display:flex;gap:10px;margin:0 16px 10px}
+  .home-btns button{flex:1;background:var(--card);border-radius:14px;padding:10px 0;font-size:15px;color:var(--ink);box-shadow:0 3px 0 rgba(22,58,75,.10)}
+
+  /* ---------- map ---------- */
+  .map{flex:1;overflow-y:auto;padding:8px 24px 90px}
+  .zone{margin-top:18px}
+  .zone-tag{display:inline-block;background:var(--zc,#63B95D);color:#fff;border-radius:999px;padding:4px 14px;font-size:15px;font-family:'Jua';box-shadow:0 2px 0 rgba(22,58,75,.15)}
+  .zone-sub{font-size:12px;color:var(--ink-soft);margin:6px 0 10px 4px}
+  .nodes{display:flex;flex-direction:column;gap:14px}
+  .node{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:16px;padding:10px 14px;box-shadow:0 3px 0 rgba(22,58,75,.10);border:2px solid transparent;text-align:left;width:88%}
+  .node:nth-child(even){align-self:flex-end}
+  .node.current{border-color:var(--coral);animation:pulse 1.6s infinite}
+  .node.locked{opacity:.45;filter:grayscale(.6)}
+  .node .face{font-size:34px;width:44px;text-align:center}
+  .node .t{flex:1}
+  .node .t .nm{display:block;font-size:16px;font-family:'Jua'}
+  .node .t .ds{display:block;font-size:12px;color:var(--ink-soft);margin-top:2px}
+  .node .st{font-size:20px}
+  .node.boss{background:#FFF0E6;border-color:#F0B08E}
+  .node.boss.current{border-color:var(--coral)}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  /* ---------- battle ---------- */
+  #scr-battle{background:linear-gradient(180deg,var(--sky) 0%,#9FD9F0 45%,var(--foam) 70%)}
+  .battle-top{display:flex;justify-content:space-between;align-items:center;padding:12px 16px 0}
+  .battle-top .stg{font-family:'Jua';color:var(--sea-deep);font-size:16px}
+  .btn-flee{font-size:13px;color:var(--ink-soft);background:var(--card);border-radius:999px;padding:4px 12px;box-shadow:0 2px 0 rgba(22,58,75,.10)}
+  .arena{display:flex;justify-content:space-between;align-items:flex-end;padding:6px 26px 0;min-height:170px}
+  .fighter{display:flex;flex-direction:column;align-items:center;gap:6px;width:44%}
+  .fighter .face{font-size:72px;line-height:1.1;filter:drop-shadow(0 4px 0 rgba(22,58,75,.18));transition:transform .15s}
+  .fighter .nm{font-family:'Jua';font-size:15px}
+  .hpbar{width:100%;height:14px;background:#D8E9F2;border-radius:8px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.08)}
+  .hpbar>i{display:block;height:100%;border-radius:8px;transition:width .35s}
+  .hp-me>i{background:var(--hp-me)}
+  .hp-foe>i{background:var(--hp-foe)}
+  .hptxt{font-size:12px;color:var(--ink-soft)}
+  .foe-face.hit,.me-face.hit{animation:shake .35s}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px) rotate(-4deg)}75%{transform:translateX(7px) rotate(4deg)}}
+  .dmgfloat{position:absolute;font-family:'Jua';font-size:26px;pointer-events:none;animation:rise .8s forwards}
+  @keyframes rise{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-46px)}}
+  .streak{position:absolute;left:50%;top:8px;transform:translateX(-50%);font-family:'Jua';color:var(--coral-deep);font-size:15px;background:#FFE9DD;padding:3px 12px;border-radius:999px;display:none}
+  .qcard{margin:10px 16px 0;background:var(--card);border-radius:20px;padding:14px 16px 10px;box-shadow:0 4px 0 rgba(22,58,75,.10);text-align:center;position:relative}
+  .tbar{height:10px;background:#D8E9F2;border-radius:6px;overflow:hidden;margin:0 8px 10px}
+  .tbar>i{display:block;height:100%;width:100%;background:var(--sea);border-radius:6px}
+  .tbar>i.hurry{background:var(--coral-deep)}
+  .qtext{font-family:'Jua';font-size:40px;letter-spacing:2px}
+  .qtext .ans{display:inline-block;min-width:76px;border-bottom:4px solid var(--coral);color:var(--coral-deep);margin-left:6px}
+
+  /* ---------- 세로셈 ----------
+     칸 너비를 고정하는 것이 이 화면의 핵심이다. 세로셈은 자리를 맞추는 것이 곧 내용이라,
+     숫자마다 폭이 달라지면 자리값 감각이 무너진다. */
+  .vgrid{display:grid;justify-items:center;align-items:center;justify-content:center;margin:2px 0 4px}
+  .vcell{
+    width:44px;height:50px;display:flex;align-items:center;justify-content:center;
+    font-family:'Jua';font-size:30px;line-height:1;font-variant-numeric:tabular-nums;
+  }
+  .vcell.op{font-size:26px;color:var(--ink-soft)}
+  .vcell.carry{font-size:18px;height:26px;color:var(--coral-deep)}
+  .vrule{height:4px;background:var(--ink);border-radius:2px;width:100%}
+  .vblank{
+    background:#FFF3D6;border:2.5px dashed #B8862A;border-radius:10px;
+    width:40px;height:46px;color:var(--ink);
+  }
+  .vblank.carry{width:28px;height:26px;border-radius:8px}
+  /* 여러 자리를 한 번에 받는 칸(보스전 답, 나눗셈에서 뺀 값). .vcell의 고정 폭을
+     반드시 풀어야 한다 — 안 풀면 칸이 40px로 고정된 채 span 가운데에 떠서 자리가 어긋난다. */
+  .vcell.wide{width:auto;justify-self:stretch}
+  .vblank.wide{min-width:62px;padding:0 6px}
+  .vcell.fresh{color:var(--sea-deep)}
+  .vcell.dim{color:var(--ink-soft)}
+  .vbracket{width:100%;height:100%;border-left:4px solid var(--ink);border-top-left-radius:12px}
+  .vgrid .vcell{min-width:0}
+  .vblank.on{border-style:solid;border-color:var(--coral);background:#FFE9DE}
+  .vblank.ok{border:2.5px solid var(--sea);background:#DFF3F0;color:var(--sea-deep)}
+  .vblank.bad{border-color:#D14B4B;background:#FDEAEA;animation:shake .3s}
+  .hint{font-size:13px;color:#B07A10;background:#FFF3D6;border-radius:10px;padding:6px 10px;margin-top:8px;display:none}
+  .msg{font-family:'Jua';font-size:15px;margin-top:6px;min-height:22px;color:var(--sea-deep)}
+  .pad{margin:10px auto 0;padding:0 16px 20px;width:100%;max-width:380px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .pad button{background:var(--card);border-radius:16px;font-size:28px;font-family:'Jua';padding:12px 0;box-shadow:0 4px 0 rgba(22,58,75,.14);transition:transform .06s}
+  .pad button:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(22,58,75,.14)}
+  .pad .k-del{background:#D8E9F2;font-size:22px}
+  .pad .k-paw{background:transparent;box-shadow:none;cursor:default;opacity:.35;font-size:22px}
+  .foe-face.dodge{animation:dodge .4s}
+  @keyframes dodge{50%{transform:translateX(20px) rotate(8deg)}}
+
+  /* ---------- result ---------- */
+  #scr-win,#scr-lose{align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(180deg,#DDF2FB,var(--foam))}
+  .big-face{font-size:96px;line-height:1.2}
+  .res-title{font-size:32px;color:var(--sea-deep);margin-top:8px}
+  .res-sub{color:var(--ink-soft);margin-top:6px;font-size:15px}
+  .res-card{background:var(--card);border-radius:18px;padding:14px 22px;margin-top:16px;box-shadow:0 3px 0 rgba(22,58,75,.10);font-size:16px;line-height:1.9}
+  .res-card b{color:#B07A10}
+  .cta{margin-top:22px;background:var(--coral);color:#fff;font-size:20px;padding:14px 44px;border-radius:999px;box-shadow:0 5px 0 var(--coral-deep)}
+  .cta.gray{background:var(--card);color:var(--ink);box-shadow:0 5px 0 rgba(22,58,75,.14);margin-top:12px;font-size:16px;padding:10px 32px}
+
+  /* ---------- modals ---------- */
+  .modal{position:fixed;inset:0;background:rgba(22,58,75,.45);display:none;align-items:flex-end;justify-content:center;z-index:50}
+  .modal.open{display:flex}
+  .sheet{background:var(--foam);width:100%;max-width:480px;max-height:86vh;border-radius:24px 24px 0 0;padding:18px 18px 26px;overflow-y:auto}
+  .sheet h2{color:var(--sea-deep);font-size:22px;display:flex;justify-content:space-between;align-items:center}
+  .x{font-size:15px;color:var(--ink-soft);background:var(--card);border-radius:999px;padding:4px 12px;box-shadow:0 2px 0 rgba(22,58,75,.10)}
+  .dex{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+  .dex .d{background:var(--card);border-radius:14px;padding:10px 4px;text-align:center;box-shadow:0 2px 0 rgba(22,58,75,.08)}
+  .dex .d .f{font-size:34px}
+  .dex .d .n{font-size:11px;margin-top:2px;color:var(--ink-soft)}
+  .dex .d.no{opacity:.35;filter:grayscale(1)}
+  .stat-tbl{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
+  .stat-tbl th,.stat-tbl td{padding:8px 6px;border-bottom:1px solid #D8E9F2;text-align:left}
+  .stat-tbl td.num,.stat-tbl th.num{text-align:right}
+  .acc-good{color:var(--sea-deep);font-weight:700}
+  .acc-bad{color:#D14B4B;font-weight:700}
+  .wrong-list{margin-top:10px;font-size:14px;line-height:2}
+  .wrong-list span{display:inline-block;background:#FDE8E8;border-radius:8px;padding:1px 10px;margin:2px 4px 2px 0}
+  .gate-in{font-size:22px;width:120px;text-align:center;border:2px solid #CFE2EC;border-radius:12px;padding:8px;font-family:inherit;background:var(--card);color:var(--ink)}
+  .note{font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.7}
+</style>
+
+
+</head>
+<body>
+<div class="stage-wrap">
+
+  <!-- HOME -->
+  <section class="screen active" id="scr-home">
+    <div class="home-top">
+      <h1 class="logo">🌊 곱셈 바다</h1>
+      <div class="chips">
+        <a class="chip" id="btn-portal" href="../" aria-label="게임 선택으로" style="text-decoration:none">🏠</a>
+        <span class="chip">🐷 <span class="num" id="coin-chip">0</span>원</span>
+        <button class="chip" id="btn-sound" aria-label="소리 켜고 끄기">🔊</button>
+      </div>
+    </div>
+    <div class="quest">
+      <div class="qt">🎯 용돈 퀘스트</div>
+      <div class="q-row" id="qr1"></div>
+      <div class="q-row" id="qr2"></div>
+      <div class="q-row" id="qr3"></div>
+    </div>
+    <div class="pet-house">
+      <div class="pet-face" id="pet-face">🐟</div>
+      <div class="pet-info">
+        <div class="pet-name" id="pet-name">파랑이</div>
+        <div class="xpbar"><i id="pet-xp" style="width:0%"></i></div>
+        <div class="pet-lv" id="pet-lv">Lv.1</div>
+      </div>
+    </div>
+    <div class="home-btns">
+      <button id="btn-dex">📖 친구 도감</button>
+      <button id="btn-parent">📊 부모님</button>
+    </div>
+    <div class="map" id="map"></div>
+  </section>
+
+  <!-- BATTLE -->
+  <section class="screen" id="scr-battle">
+    <div class="battle-top">
+      <span class="stg" id="b-stage">1. 산호 여울</span>
+      <button class="btn-flee" id="btn-flee">그만하기</button>
+    </div>
+    <div class="arena" id="arena" style="position:relative">
+      <span class="streak" id="streak-badge">🔥 3연속! 크리티컬</span>
+      <div class="fighter">
+        <div class="face me-face" id="me-face">🐟</div>
+        <div class="nm" id="me-name">파랑이</div>
+        <div class="hpbar hp-me"><i id="me-hp" style="width:100%"></i></div>
+        <div class="hptxt num" id="me-hptxt"></div>
+      </div>
+      <div class="fighter">
+        <div class="face foe-face" id="foe-face">🦐</div>
+        <div class="nm" id="foe-name">톡톡이</div>
+        <div class="hpbar hp-foe"><i id="foe-hp" style="width:100%"></i></div>
+        <div class="hptxt num" id="foe-hptxt"></div>
+      </div>
+    </div>
+    <div class="qcard">
+      <div class="tbar"><i id="t-fill"></i></div>
+      <!-- 곱셈이든 나눗셈이든, 보스든 아니든 전부 세로셈으로 보여준다. -->
+      <div class="vgrid" id="q-grid"></div>
+      <div class="hint" id="q-hint"></div>
+      <div class="msg" id="b-msg">문제를 풀면 파랑이가 공격해!</div>
+    </div>
+    <div class="pad" id="pad">
+      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+      <button class="k-paw" disabled aria-hidden="true">🫧</button><button data-k="0">0</button><button class="k-del" data-k="del">⌫</button>
+    </div>
+  </section>
+
+  <!-- WIN -->
+  <section class="screen" id="scr-win">
+    <div class="big-face" id="w-face">🐢</div>
+    <h2 class="res-title" id="w-title">이겼다!</h2>
+    <div id="w-stars" style="font-size:34px;letter-spacing:4px;margin-top:4px"></div>
+    <div class="res-sub" id="w-sub"></div>
+    <div class="res-card" id="w-card"></div>
+    <button class="cta" id="btn-next">다음 모험 ➜</button>
+    <button class="cta gray" id="btn-home1">바다로 돌아가기</button>
+  </section>
+
+  <!-- LOSE -->
+  <section class="screen" id="scr-lose">
+    <div class="big-face">🫧</div>
+    <h2 class="res-title" style="color:var(--coral-deep)">아깝다!</h2>
+    <div class="res-sub" id="l-sub">거의 다 이겼는데! 한 번 더 하면 이길 수 있어</div>
+    <div class="res-card" id="l-card"></div>
+    <button class="cta" id="btn-retry">다시 도전!</button>
+    <button class="cta gray" id="btn-home2">바다로 돌아가기</button>
+  </section>
+
+  <!-- DEX MODAL -->
+  <div class="modal" id="m-dex"><div class="sheet">
+    <h2>📖 친구 도감 <button class="x" data-close="m-dex">닫기</button></h2>
+    <div class="dex" id="dex-grid"></div>
+  </div></div>
+
+  <!-- PARENT MODAL -->
+  <div class="modal" id="m-parent"><div class="sheet">
+    <h2>📊 부모님 페이지 <button class="x" data-close="m-parent">닫기</button></h2>
+    <div id="p-gate" style="text-align:center;padding:18px 0">
+      <p style="margin-bottom:10px">어른인지 확인할게요! <b class="num">17 × 23</b> = ?</p>
+      <input class="gate-in num" id="gate-in" inputmode="numeric" maxlength="4" aria-label="정답 입력">
+      <button class="x" id="gate-ok" style="margin-left:8px">확인</button>
+      <p class="note" id="gate-msg"></p>
+    </div>
+    <div id="p-body" style="display:none"></div>
+  </div></div>
+
+</div>
+<script>
+'use strict';
+/* ================= 순수 게임 로직 (node 테스트 가능) ================= */
+function ri(a,b){return a+Math.floor(Math.random()*(b-a+1));}
+
+/**
+ * 이름 뒤에 붙일 조사를 고른다. 마지막 글자의 받침 유무로 갈린다.
+ * 적 이름을 늘릴 때마다 "코끼리대장를" 같은 문장이 새로 생기지 않게 하려고 둔다.
+ * 한글 음절은 0xAC00부터 28개씩 묶여 있고, 그 나머지가 0이면 받침이 없다.
+ */
+function withJosa(name,withB,withoutB){
+  var c=name.charCodeAt(name.length-1)-0xAC00;
+  var has=(c>=0&&c<11172)&&(c%28)!==0;
+  return name+(has?withB:withoutB);
+}
+/**
+ * 수 뒤에 붙일 조사를 고른다. 숫자는 한글이 아니라서 위 함수로는 갈리지 않는다.
+ * 읽는 소리는 마지막 자리로 정해지고, 받침이 있는 것은 0(영·십·백)·1(일)·3(삼)·6(육)·7(칠)·8(팔)뿐이다.
+ * 이게 없으면 "4 × 3 은?"은 맞고 "4 × 5 은?"은 틀린 문장이 화면에 섞여 나온다.
+ */
+function numJosa(n,withB,withoutB){
+  return n+('013678'.indexOf(String(n).slice(-1))>=0?withB:withoutB);
+}
+/* ================= 문제 =================
+ * 유형 이름이 곧 푸는 방식이다.
+ *   M1  곱셈 올림 없음 — 세로셈 빈칸 (자리별)
+ *   M1c 곱셈 올림      — 세로셈 빈칸 (자리별). 복습으로만 나온다
+ *   M3  곱셈 올림 없음 — 십의 자리부터 분해해서 더하기
+ *   M3c 곱셈 올림      — 위와 같음
+ *   M4  곱셈 올림 없음 — 답을 한 번에. 복습으로만 나온다
+ *   M4c 곱셈 올림      — 올림을 보여주고 답을 한 번에 (3구역 3·4판)
+ *   M2  곱셈 올림 없음 — 세로셈으로 보여주되 답을 한 번에 (보스)
+ *   M2c 곱셈 올림      — 위와 같음 (보스)
+ *   Dp  나눗셈 — 곱한 값만 넣는다. 몫과 뺀 값이 저절로 채워진다 (2구역 1·2판)
+ *   D1  나눗셈 — 몫과 뺀 값을 넣는다. 곱한 값은 저절로 채워진다
+ *   D2  나눗셈 — 몫만 넣는다. 앞 단계의 뺀 값은 다음 몫을 넣은 뒤에 보인다 (보스)
+ *   Dqw 나눗셈 — 몫만 넣는다. 곱한 값과 뺀 값이 그 자리에서 바로 보인다 (4구역 1·2판)
+ *   끝의 w는 나누는 수가 두 자리라는 뜻이다.
+ */
+var TYPES={
+  M1 :'두자리×한자리 (올림 없음)',
+  M1c:'두자리×한자리 (올림)',
+  M2 :'두자리×한자리 (암산)',
+  M2c:'두자리×한자리 (암산·올림)',
+  M3 :'두자리×한자리 (분해해서 더하기)',
+  M3c:'두자리×한자리 (분해·올림)',
+  M4 :'두자리×한자리 (답 한 번에)',
+  M4c:'두자리×한자리 (올림 보여주고 답 한 번에)',
+  Dp :'세자리÷한자리 (곱한 값만)',
+  D1 :'세자리÷한자리 (몫과 뺀 값)',
+  D2 :'세자리÷한자리 (몫만)',
+  Dqw:'세자리÷두자리 (몫만, 바로 보여줌)',
+  D1w:'세자리÷두자리 (몫과 뺀 값)',
+  D2w:'세자리÷두자리 (몫만)'
+};
+function isDiv(t){return t.charAt(0)==='D';}
+/** 십의 자리부터 분해해서 더하는 방식. 세로셈과 암산 사이를 잇는 다리다. */
+function isSplit(t){return t==='M3'||t==='M3c';}
+/** 나눗셈에서 곱한 값만 넣는 방식(2구역 1·2판). 몫과 뺀 값은 저절로 채워진다. */
+function isProdOnly(t){return t==='Dp';}
+/** 나눗셈에서 몫만 넣는 방식. 곱한 값과 뺀 값은 저절로 채워진다. */
+function isQuotOnly(t){return t==='D2'||t==='D2w'||t==='Dqw';}
+/** 몫만 넣되 앞 단계의 뺀 값을 **다음 몫을 넣은 뒤에야** 보여주는 방식(보스). */
+function isLateRem(t){return t==='D2'||t==='D2w';}
+/** 보스전 곱셈. 세로셈으로 보여주되 빈칸을 나누지 않고 답을 한 번에 받는다. */
+function isWhole(t){return t==='M2'||t==='M2c';}
+/** 올림을 화면이 적어 주고 답을 한 번에 받는 방식(3구역 3·4판). 보스 직전 계단이다. */
+function isCarryShown(t){return t==='M4'||t==='M4c';}
+/** 답을 한 번에 받는 곱셈 전부. 격자에 답 칸 하나만 둔다. */
+function isOneShot(t){return isWhole(t)||isCarryShown(t);}
+
+/**
+ * 곱셈 한 문제. 세로셈에 필요한 중간값을 미리 다 담아 둔다.
+ *   ones      일의 자리 곱의 일의 자리   carry 위로 올리는 수
+ *   p2        십의 자리 곱 + 올림        ans   최종 답
+ *   tensProd  십의 자리 곱의 값 (42 × 3 이면 120)
+ *   tensWrite 그 값을 세로셈에 **적을 때** 쓰는 수 (12). 끝의 0은 자리가 대신하므로 적지 않는다.
+ */
+function P(t,a,b){
+  var tens=Math.floor(a/10), u=a%10, p1=u*b;
+  return {t:t,a:a,b:b,op:'×',tens:tens,u:u,p1:p1,tensProd:tens*10*b,tensWrite:tens*b,
+          ones:p1%10, carry:Math.floor(p1/10), p2:tens*b+Math.floor(p1/10), ans:a*b};
+}
+
+/**
+ * 나눗셈 한 문제. 세로셈 각 단계의 값을 미리 다 담아 둔다.
+ *   work[i].cur  이번에 나눌 수     .qd  몫의 이 자리
+ *          .prod 곱해서 빼는 수     .rem 빼고 남은 수
+ *          .next 다음 자리를 내려 쓴 수 (마지막 단계에서는 rem과 같다)
+ */
+function DP(t,n,d){
+  var digits=String(n).split('').map(Number), work=[], i=0, cur=0, qd, prod, rem, qStart, hasNext;
+  /* 첫 단계는 나누는 수 이상이 될 때까지 자리를 끌어온다.
+     한 자리로 나누면 보통 한 자리에서 끝나지만, 두 자리로 나누면 두 자리를 한꺼번에 봐야 한다.
+     그래서 **몫이 놓이는 열이 문제마다 다르다** — 첫 몫은 끌어온 마지막 자리 위에 온다. */
+  while(i<digits.length&&cur<d){ cur=cur*10+digits[i]; i++; }
+  qStart=i-1;
+  for(;;){
+    qd=Math.floor(cur/d); prod=qd*d; rem=cur-prod;
+    hasNext=i<digits.length;
+    work.push({cur:cur,qd:qd,prod:prod,rem:rem,
+               col:qStart+work.length,
+               next:hasNext?rem*10+digits[i]:rem});
+    if(!hasNext)break;
+    cur=rem*10+digits[i]; i++;
+  }
+  return {t:t,a:n,b:d,op:'÷',digits:digits,work:work,ans:n/d,qStart:qStart};
+}
+
+/**
+ * 일의 자리가 0이면 세로셈 첫 칸이 "0 × 4"라 배울 것이 없다. 그래서 1~9로 뽑는다.
+ * 곱하는 수에서 1을 뺀 이유도 같다 — 곱셈구구를 연습시키는 게 목적이다.
+ */
+function genMul(t){
+  var tens,u,b;
+  if(t.slice(-1)!=='c'){
+    // 올림이 없으려면 일의 자리 곱이 10 미만이어야 한다.
+    do{ u=ri(1,4); b=ri(2,9); }while(u*b>=10);
+    tens=ri(1,9);
+    return P(t,tens*10+u,b);
+  }
+  // 끝에 c가 붙은 유형 — 올림이 반드시 생기도록 일의 자리 곱을 10 이상으로 만든다.
+  do{ u=ri(2,9); b=ri(2,9); }while(u*b<10);
+  tens=ri(1,9);
+  return P(t,tens*10+u,b);
+}
+
+/**
+ * 나눗셈 문제. 세 자리 ÷ 한 자리이고 **나머지는 언제나 0**이다.
+ *
+ * 두 가지를 일부러 걸러 낸다.
+ * 첫째, 첫 자리가 나누는 수보다 작은 경우(128 ÷ 4)를 뺀다. 두 자리를 한꺼번에 봐야 하고
+ * 몫도 두 자리가 되어, 아이 입장에서는 규칙이 다른 계산이다.
+ * 둘째, 몫 가운데에 0이 들어가는 경우(609 ÷ 3 = 203)를 뺀다. 0을 빼먹고 23이라 쓰는
+ * 대표적인 함정이라 따로 가르쳐야 한다.
+ *
+ * 나누는 수를 2~6으로 둔 것은 위 두 조건 때문이다. 7 이상이면 조건을 지키는 문제가
+ * 거의 남지 않는다 — 9로 나누면 999 ÷ 9 = 111 하나뿐이다.
+ */
+function genDiv(t){
+  var d,q,qs;
+  if(isWideDiv(t)){
+    /* 두 자리로 나누기. 나머지 0, 몫도 두 자리, 몫에 0 없음.
+       나누는 수가 두 자리면 첫 자리 하나로는 절대 나눠지지 않으므로 두 자리를 한꺼번에 본다.
+       그래서 몫을 **어림해야** 한다 — 이 구역이 어려운 진짜 이유다. */
+    do{
+      d=ri(11,49);
+      q=ri(11,99);
+      qs=String(q);
+    }while(qs.indexOf('0')>=0||d*q<100||d*q>999);
+    return DP(t,d*q,d);
+  }
+  do{
+    d=ri(2,6);
+    q=ri(100,Math.floor(999/d));
+    qs=String(q);
+  }while(qs.indexOf('0')>=0);
+  return DP(t,q*d,d);
+}
+
+function genByType(t){ return isDiv(t)?genDiv(t):genMul(t); }
+
+/*
+ * 스테이지별 문제 유형. 구역은 곱셈 → 나눗셈 → 곱셈(올림) → 나눗셈 순이다.
+ *
+ * 구역마다 사다리가 다르다(모두 사용자가 정한 값이다).
+ *   1구역  자리별 세로셈 2판 → 분해 2판 → 암산 보스
+ *   2구역  곱한 값만 2판 → 몫+뺀 값 2판 → 몫만 보스
+ *   3구역  분해 2판 → 올림 보여주고 답 한 번에 2판 → 암산 보스
+ *          (세로셈은 1구역에서 익혔으니 바로 분해로 들어가고, 보스 직전에 계단을 하나 둔다)
+ *   4구역  몫만 넣고 바로 보여주기 2판 → 몫+뺀 값 2판 → 몫만(늦게 보여주기) 보스
+ *          (두 자리로 나눌 땐 구구단이 없어 곱한 값을 넣으려면 23 × 7 같은 암산이 필요하다.
+ *           2구역 방식을 그대로 가져오면 1·2판이 3·4판보다 어려워지므로 어림만 연습시킨다)
+ *
+ * ⚠️ **보스의 난이도는 그 구역에서 연습한 것과 같아야 한다.** 1구역은 올림 없는 곱셈만
+ * 연습시켜 놓고 보스에서 올림 암산을 내면, 아이 입장에서는 배운 적 없는 것이 갑자기 나온다.
+ */
+var MIX={
+  1:[['M1',1]], 2:[['M1',1]], 3:[['M3',1]], 4:[['M3',1]], 5:[['M2',1]],
+  6:[['Dp',1]], 7:[['Dp',1]], 8:[['D1',1]], 9:[['D1',1]], 10:[['D2',1]],
+  11:[['M3c',.8],['M3',.2]], 12:[['M3c',1]], 13:[['M4c',1]], 14:[['M4c',1]], 15:[['M2c',1]],
+  16:[['Dqw',1]], 17:[['Dqw',1]], 18:[['D1w',1]], 19:[['D1w',1]], 20:[['D2w',1]]
+};
+
+function pickType(stage){
+  var mix=MIX[stage]||MIX[1], r=Math.random(), acc=0, i;
+  for(i=0;i<mix.length;i++){acc+=mix[i][1]; if(r<acc) return mix[i][0];}
+  return mix[mix.length-1][0];
+}
+
+/**
+ * 오답 풀에서 25% 확률로 복습 문제 출제.
+ *
+ * ⚠️ 복습 문제는 **수만 가져오고 푸는 방식은 지금 구역을 따른다.** 저장된 유형을 그대로
+ * 쓰면 2구역에서 틀린 나눗셈이 4구역에 와서 갑자기 뺀 값을 묻는 칸을 만든다 — 같은 구역
+ * 안에서 규칙이 문제마다 달라지는 셈이라 아이가 헷갈린다.
+ * 연산 자체가 다르면(곱셈 오답이 나눗셈 구역에) 그냥 새 문제를 낸다.
+ */
+/** 나누는 수가 두 자리인 유형인가. 복습 문제를 재사용할 수 있는지 가르는 기준이다. */
+function isWideDiv(t){ return t.slice(-1)==='w'; }
+
+function makeProblem(stage,pool){
+  var want=pickType(stage);
+  /* 연산이 같아야 하고, 나눗셈이면 **나누는 수의 자릿수까지 같아야** 재사용할 수 있다.
+     한 자리로 나눈 오답을 두 자리 구역에 그대로 가져오면 유형과 실제 수가 어긋난다. */
+  var reusable=pool&&pool.length>0&&isDiv(pool[0].t)===isDiv(want)&&
+    (!isDiv(want)||(String(pool[0].b).length>1)===isWideDiv(want));
+  if(reusable && Math.random()<.25){
+    var o=pool.shift(), p;
+    if(isDiv(want)){
+      p=DP(want,o.a,o.b);
+    }else{
+      /* 올림 유무는 유형 이름이 아니라 수에서 나온다. 푸는 **방식**만 지금 구역을 따른다.
+         방식이 넷(자리별 세로셈 / 분해 / 올림 보여주고 답 한 번에 / 보스)이므로 하나라도
+         빠뜨리면 그 구역에서만 복습 문제가 다른 규칙으로 나온다. */
+      var carry=((o.a%10)*o.b)>=10;
+      var fam=isWhole(want)?'M2':(isSplit(want)?'M3':(isCarryShown(want)?'M4':'M1'));
+      p=P(fam+(carry?'c':''),o.a,o.b);
+    }
+    p.review=true; return p;
+  }
+  return genByType(want);
+}
+
+/** 그 스테이지가 나눗셈 구역인지. 체력과 제한 시간을 여기에 맞춘다. */
+function isDivStage(stage){ return !!MIX[stage] && isDiv(MIX[stage][0][0]); }
+
+/**
+ * 적 체력.
+ *
+ * 숫자숲보다 훨씬 낮게 잡았다. 저기서는 한 문제가 탭 한두 번이지만 여기서는 세로셈
+ * 한 판이라, 같은 체력을 쓰면 한 전투가 몇 배로 늘어져 아이가 지친다.
+ * 나눗셈은 한 문제에 입력이 3~5번이라 곱셈보다 더 낮췄다.
+ */
+function foeMaxHP(stage,isBoss){
+  /* 보스 기준치를 70으로 잡은 이유: 뒤로 갈수록 +stage로 늘어나는데, 80이면 15스테이지
+     보스가 최대 10문제까지 늘어진다. 그 보스는 올림 암산이라 한 문제가 특히 무겁다. */
+  if(isDivStage(stage)) return isBoss?60+stage:40+stage;
+  return isBoss?70+stage:50+stage;
+}
+
+/**
+ * 제한 시간(밀리초). 연속 정답이 쌓이면 왼쪽에서 오른쪽으로 짧아진다.
+ *
+ * 곱셈 7 → 6 → 5초는 사용자가 정한 값이다.
+ * 나눗셈은 한 문제에 입력이 3~5번이고 다루는 수도 커서 같은 시간으로는 불가능하므로
+ * 늘려 잡았다. **아이가 실제로 해 보고 조정할 값이다.**
+ */
+/* 두 자리로 나누기는 몫을 어림하는 단계가 새로 붙어 한 자리보다 오래 걸린다.
+   실제로 아이가 해 보고 조정할 값이다. */
+var TIME={ M:[7000,6000,5000], M3:[10000,9000,8000], D:[15000,12000,10000], Dw:[19000,16000,13000] };
+/** 그 문제에 줄 시간표를 고른다. 입력 횟수와 다루는 수의 크기가 다르면 시간도 달라야 한다. */
+function timeFor(t){ return t.slice(-1)==='w'?TIME.Dw:(isDiv(t)?TIME.D:(isSplit(t)?TIME.M3:TIME.M)); }
+
+/* ================= 게임 데이터 ================= */
+/*
+ * 구역·적·문제비율(MIX) 세 배열의 길이가 곧 스테이지 수다. 어디에도 20 같은 수를
+ * 박아 두지 않았으므로, 구역을 늘리려면 세 배열을 이어 붙이기만 하면 된다.
+ */
+var ZONES=[
+  {name:'산호 여울', color:'#2E9BC9', sub:'두자리 × 한자리 (올림 없음)'},
+  {name:'거품 동굴', color:'#34B3A0', sub:'세자리 ÷ 한자리'},
+  {name:'깊은 바다', color:'#16688F', sub:'두자리 × 한자리 (올림)'},
+  {name:'심해 해구', color:'#0E4A6B', sub:'세자리 ÷ 두자리'}
+];
+/* 일반 스테이지 = 악당, 5의 배수 = 심술 마법에 걸린 동물 대장(이기면 마법이 풀려 친구가 됨) */
+var ANIMALS=[
+  {f:'🦐',n:'톡톡이'},{f:'🪼',n:'말랑이'},{f:'🐚',n:'소라돌이'},{f:'🦀',n:'가위발'},{f:'🐢',n:'거북대장',boss:1},
+  {f:'🦑',n:'흐물이'},{f:'🐙',n:'여덟발'},{f:'🦞',n:'붉은집게'},{f:'🪸',n:'산호가시'},{f:'🐧',n:'펭귄대장',boss:1},
+  {f:'🐍',n:'바다뱀'},{f:'🦈',n:'이빨상어'},{f:'🦩',n:'분홍부리'},{f:'🦢',n:'백조단'},{f:'🐋',n:'고래대장',boss:1},
+  {f:'🪝',n:'갈고리'},{f:'🌊',n:'소용돌이'},{f:'⚓',n:'닻지기'},{f:'🦴',n:'뼈다귀'},{f:'🧜',n:'바다임금',boss:1}
+];
+/* 화면 곳곳의 "몇 개 중 몇 개"를 여기서 뽑는다. 숫자를 손으로 박아 두면
+   구역을 늘릴 때 반드시 어딘가 하나를 빠뜨린다. */
+var STAGES=ANIMALS.length;
+var BOSS_TOTAL=ANIMALS.filter(function(a){return a.boss;}).length;
+var NORMAL_TOTAL=STAGES-BOSS_TOTAL;
+
+/* 내림차순으로 둔다 — petFormFor가 위에서부터 첫 일치를 고른다 */
+var PET_FORMS=[
+  {minLv:30,f:'🐳',n:'전설의 파랑이'},
+  {minLv:20,f:'🐬',n:'번개 파랑이'},
+  {minLv:13,f:'🦭',n:'날쌘 파랑이'},
+  {minLv:8, f:'🐡',n:'부푼 파랑이'},
+  {minLv:4, f:'🐠',n:'씩씩한 파랑이'},
+  {minLv:1, f:'🐟',n:'파랑이'}
+];
+/* 힌트는 푸는 방법만 알려주고 답은 말하지 않는다 — 숫자숲과 같은 방침이다. */
+var HINTS={
+  M1 :'💡 일의 자리끼리 먼저 곱하자. 그다음 십의 자리를 곱하면 돼!',
+  M1c:'💡 곱한 값이 10을 넘으면 일의 자리만 쓰고, 나머지는 위로 올려 두자!',
+  M3 :'💡 40 × 3 처럼 십의 자리부터 먼저 곱하자. 그다음 일의 자리를 곱해서 더하면 돼!',
+  M3c:'💡 40 × 3 처럼 십의 자리부터 먼저 곱하자. 그다음 일의 자리를 곱해서 더하면 돼!',
+  M2 :'💡 십의 자리부터 곱해 보자. 30 × 4 를 먼저 하고 나머지를 더하면 쉬워!',
+  M2c:'💡 십의 자리부터 곱해 보자. 30 × 4 를 먼저 하고 나머지를 더하면 쉬워!',
+  M4 :'💡 올림이 없으니 십의 자리 곱과 일의 자리 곱을 그대로 이어 쓰면 돼!',
+  M4c:'💡 올림은 적어 뒀어. 일의 자리 곱의 끝자리를 쓰고, 십의 자리 곱에 올림을 더하자!',
+  Dp :'💡 나누는 수의 곱셈구구에서, 넘지 않으면서 가장 가까운 수를 찾아 넣자!',
+  D1 :'💡 나누는 수의 곱셈구구를 떠올리자. 넘지 않으면서 가장 가까운 것이 몫이야!',
+  D2 :'💡 빼고 남은 수 옆에 다음 자리를 내려 쓰면, 다음에 나눌 수가 돼!',
+  D1w:'💡 두 자리로 나눌 땐 어림해 보자. 곱해 보고 크면 하나 줄이면 돼!',
+  D2w:'💡 두 자리로 나눌 땐 어림해 보자. 곱해 보고 크면 하나 줄이면 돼!',
+  Dqw:'💡 두 자리로 나눌 땐 어림해 보자. 곱해 보고 크면 하나 줄이면 돼!',
+  DEF:'💡 구구단을 천천히 떠올려 보자!'
+};
+var PRAISE=['정답! ✨','멋져! 🎉','대단해! 💪','천재인걸? 🌟','완벽해! 🍀'];
+var CHEER=['괜찮아, 다시 한번!','아깝다! 한 번 더 해보자!','천천히 구구단을 떠올려 보자!'];
+
+var ME_MAX=50, ATK=10, CRIT=15, FOE_ATK=8;
+
+/* ================= 레벨 곡선 =================
+   Lv.N에 도달하는 데 드는 누적 경험치 = 2*(N-1)*(N+4)
+   레벨 간 간격이 12 → 16 → 20 → 24 …로 4씩 벌어진다. 올라갈수록 어려워진다. */
+function xpForLevel(n){return 2*(n-1)*(n+4);}
+function levelFromXp(xp){
+  var n=1;
+  /* 상한은 저장 데이터가 깨져 거대한 값이 들어와도 루프가 멈추게 하는 안전장치다 */
+  while(n<999&&xpForLevel(n+1)<=xp)n++;
+  return n;
+}
+function petFormFor(lv){
+  var i;
+  for(i=0;i<PET_FORMS.length;i++){if(lv>=PET_FORMS[i].minLv)return PET_FORMS[i];}
+  return PET_FORMS[PET_FORMS.length-1];
+}
+
+var SLOT_NAME={carry:'올림',ones:'일의 자리',tens:'십의 자리',huns:'백의 자리',whole:'답',
+  tp:'십의 자리 곱',op:'일의 자리 곱',sum:'합'};
+
+/**
+ * 곱셈 세로셈에서 빈칸을 채우는 순서. 칸을 위→아래, 좌→우로 1234라 부르면 1 → 4 → 2 → 3 이다.
+ *
+ * 규칙은 하나다. **구해야 하는 값은 오른쪽부터, 이미 구한 값을 옮겨 적을 때는 왼쪽부터.**
+ * 올림은 오른쪽에서 왼쪽으로 흐르니 올림·일의 자리는 그 순서가 맞고,
+ * 7×6+3=45 는 이미 머릿속에 있는 수라 사람은 4를 먼저 쓴다. 여기서 오른쪽부터 물으면
+ * 아는 수를 거꾸로 분해하게 시키는 셈이 된다.
+ *
+ * 보스전(M2·M2c)과 올림을 보여주는 판(M4·M4c)은 빈칸을 나누지 않고 답을 한 번에 받는다.
+ *
+ * DOM 바깥에 둔 이유는 이 순서가 이 게임에서 가장 쉽게 조용히 깨지는 부분이라서다.
+ * 화면으로는 "왜인지 어색한" 정도로만 보여 눈으로 못 잡는다. 그래서 테스트로 고정한다.
+ */
+function gridSteps(p){
+  var rs=String(p.ans), st=[];
+  if(isWhole(p.t))return [{key:'whole',val:p.ans,digits:rs.length}];
+  /* 올림을 보여주고 답을 한 번에. 보스와 같은 칸 하나인데 올림이 힌트로 적혀 있다.
+     3구역에서 분해(왼쪽부터) 두 판 뒤에 오는 계단이라, 무엇이 적혀 있는지 말로 짚어 준다. */
+  if(isCarryShown(p.t))return [{key:'whole',val:p.ans,digits:rs.length,
+    say:p.carry>0?'올림 '+numJosa(p.carry,'은','는')+' 적어 뒀어. 답을 한 번에!':'올림이 없네. 답을 한 번에!'}];
+  /*
+   * 분해해서 더하기. **십의 자리부터** 묻는다 — 세로셈은 오른쪽부터지만 암산은
+   * 왼쪽부터가 훨씬 쉽고(답의 크기가 먼저 잡히고 자릿수를 거꾸로 외울 필요가 없다),
+   * 5스테이지 보스가 바로 그 암산이다. 세로셈만 연습시키면 보스에서 배운 적 없는
+   * 방법을 요구하게 된다. 그래서 3·4스테이지가 그 다리 역할을 한다.
+   * 값을 자리별로 쪼개지 않고 통째로 받는 이유도 같다 — 12는 "1,2" 두 자리가 아니라
+   * 하나의 크기로 다뤄야 머릿속 계산과 같아진다.
+   *
+   * ⚠️ 십의 자리 곱은 **끝의 0을 빼고** 적는다. 42 × 3 이면 120이 아니라 12를 넣고,
+   * 한 칸 왼쪽(`end`가 3)에서 끝내 자리가 0을 대신하게 한다. 0에는 구할 것이 없는데
+   * 제한 시간 안에 한 번 더 눌러야 했다(사용자 지시).
+   * `end`를 여기서 정하는 이유는 화면 쪽 `drawMul`이 이 값을 그대로 쓰기 때문이다.
+   * 양쪽에 열 번호를 따로 적으면 한쪽만 고쳐도 화면은 멀쩡해 보인다.
+   */
+  if(isSplit(p.t))return [
+    {key:'tp', val:p.tensWrite,digits:String(p.tensWrite).length,end:3,
+     say:'십의 자리 '+p.tens+' × '+numJosa(p.b,'은','는')+'?'},
+    {key:'op', val:p.p1,       digits:String(p.p1).length,      end:4,
+     say:'일의 자리 '+p.u+' × '+numJosa(p.b,'은','는')+'?'},
+    {key:'sum',val:p.ans,      digits:rs.length,                end:4,
+     say:'둘을 더하면?'}
+  ];
+  if(p.carry>0)st.push({key:'carry',val:p.carry,digits:1});
+  st.push({key:'ones',val:p.ones,digits:1});
+  if(rs.length===3){
+    st.push({key:'huns',val:Number(rs[0]),digits:1});
+    st.push({key:'tens',val:Number(rs[1]),digits:1});
+  }else{
+    st.push({key:'tens',val:Number(rs[0]),digits:1});
+  }
+  return st;
+}
+
+/**
+ * 나눗셈 세로셈에서 묻는 순서.
+ *
+ * Dp(2구역 1·2판) — **곱한 값만** 넣는다. 맞히면 몫이 저절로 적히고 뺀 값도 바로 나온다.
+ *             582 ÷ 3 이면 3 → (몫 1, 28 자동) → 27 → (몫 9, 12 자동) → 12 → (몫 4) 순이다.
+ *             "나누는 수의 구구단에서 넘지 않는 가장 큰 것 찾기"만 남기고 뺄셈을 걷어낸 판이다.
+ * D1(2구역 3·4판) — 몫 한 자리를 넣으면 곱한 값이 **저절로** 채워지고, 아이는 뺀 값을 넣는다.
+ *             582 ÷ 3 이면 1 → (3 자동) → 28 → 9 → (27 자동) → 12 → 4 순이다.
+ *             마지막 뺀 값은 언제나 0이라 묻지 않고 저절로 채운다.
+ * Dqw(4구역 1·2판) — 몫만 넣는다. 곱한 값과 뺀 값이 그 자리에서 바로 보인다. 어림만 연습한다.
+ * D2(보스) — 몫만 넣는다. 앞 단계의 뺀 값은 다음 몫을 넣은 뒤에야 보인다.
+ *             뺀 값을 손으로 쓰지 않으므로 그만큼을 머리로 해야 해서 더 어렵다.
+ */
+function divSteps(p){
+  var st=[], i, last=p.work.length-1, w;
+  for(i=0;i<p.work.length;i++){
+    w=p.work[i];
+    if(isProdOnly(p.t)){
+      st.push({key:'p'+i,val:w.prod,digits:String(w.prod).length,
+        say:p.b+'단에서 '+numJosa(w.cur,'을','를')+' 넘지 않는 가장 큰 수는?'});
+      continue;
+    }
+    st.push({key:'q'+i,val:w.qd,digits:1});
+    if((p.t==='D1'||p.t==='D1w')&&i<last)st.push({key:'r'+i,val:w.next,digits:String(w.next).length});
+  }
+  return st;
+}
+
+function stepsFor(p){ return isDiv(p.t)?divSteps(p):gridSteps(p); }
+
+/**
+ * 나눗셈에서 "뺀 값" 줄이 차지할 열 범위.
+ *
+ * ⚠️ 뺀 값이 0이면 내려 쓴 한 자리만 남아, 칸이 가로줄 오른쪽 바깥에 떠 버린다.
+ * 그러면 그 칸이 **비어 있는 다음 몫 칸 바로 아래**에 붙어서, 아이 눈에는 몫을 넣기도 전에
+ * 엉뚱한 자리에 값을 넣으라는 것처럼 읽힌다(650 ÷ 2 에서 실제로 겪었다).
+ * 그래서 칸을 가로줄 오른쪽 끝까지 왼쪽으로 늘려 붙여 둔다.
+ */
+function remCols(p,i,C0){
+  var w=p.work[i], last=i===p.work.length-1;
+  var end=last?C0+w.col:C0+w.col+1;
+  var s=String(last?w.rem:w.next);
+  var start=end-s.length+1;
+  var ruleEnd=C0+w.col;
+  if(start>ruleEnd)start=ruleEnd;
+  return {start:start,end:end,str:s};
+}
+
+if(typeof module!=='undefined'&&module.exports){
+  module.exports={TYPES:TYPES,MIX:MIX,ZONES:ZONES,ANIMALS:ANIMALS,STAGES:STAGES,BOSS_TOTAL:BOSS_TOTAL,
+    P:P,DP:DP,genByType:genByType,genMul:genMul,genDiv:genDiv,pickType:pickType,makeProblem:makeProblem,
+    gridSteps:gridSteps,divSteps:divSteps,stepsFor:stepsFor,remCols:remCols,SLOT_NAME:SLOT_NAME,
+    isDiv:isDiv,isWhole:isWhole,isSplit:isSplit,isQuotOnly:isQuotOnly,isProdOnly:isProdOnly,isLateRem:isLateRem,
+    isCarryShown:isCarryShown,isOneShot:isOneShot,isWideDiv:isWideDiv,isDivStage:isDivStage,TIME:TIME,timeFor:timeFor,HINTS:HINTS,
+    foeMaxHP:foeMaxHP,xpForLevel:xpForLevel,levelFromXp:levelFromXp,petFormFor:petFormFor,PET_FORMS:PET_FORMS,
+    withJosa:withJosa,numJosa:numJosa};
+}
+
+/* ================= 저장 ================= */
+var KEY='mulforest-v1';
+var S={coins:0,cleared:0,xp:0,dex:[],sound:true,daily:{date:'',wins:0,star3:0,q1:false,q2:false},week:{key:'',wins:0,qw:false},stats:{},wrongPool:[],wrongLog:[],stars:{}};
+/* 용돈 경제: 승리 +1원(보스 +5원, 재도전 0원) / 일일퀘 3승 +20원, 별3 승리 +20원 / 주간퀘 15승 +30원 — 주당 최대 약 330원 */
+var Q1_COIN=20,Q2_COIN=20,QW_COIN=30,QW_WINS=15;
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function load(){
+  try{var raw=localStorage.getItem(KEY); if(raw){var d=JSON.parse(raw); for(var k in S){if(d[k]!==undefined)S[k]=d[k];}}}catch(e){}
+}
+function today(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+function weekKey(){ /* 월요일 시작 주 */
+  var d=new Date(); d.setHours(0,0,0,0);
+  d.setDate(d.getDate()-((d.getDay()+6)%7));
+  return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+}
+function dailyCheck(){
+  var ch=false;
+  if(S.daily.date!==today()){S.daily={date:today(),wins:0,star3:0,q1:false,q2:false};ch=true;}
+  if(!S.week||S.week.key!==weekKey()){S.week={key:weekKey(),wins:0,qw:false};ch=true;}
+  if(ch)save();
+}
+
+/* ================= DOM ================= */
+if(typeof document!=='undefined'){(function(){
+  var $=function(id){return document.getElementById(id);};
+
+  /* --- 사운드 --- */
+  var AC=null;
+  function beep(freq,dur,when,type){
+    if(!S.sound)return;
+    try{
+      if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();
+      var o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime+(when||0);
+      o.type=type||'triangle'; o.frequency.value=freq;
+      g.gain.setValueAtTime(.001,t); g.gain.exponentialRampToValueAtTime(.18,t+.02);
+      g.gain.exponentialRampToValueAtTime(.001,t+(dur||.15));
+      o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+(dur||.15)+.05);
+    }catch(e){}
+  }
+  function sOK(){beep(660,.12);beep(880,.14,.09);}
+  /* 빈칸 하나를 맞혔을 때. 문제를 다 푼 것은 아니라 소리를 짧고 작게 둔다. */
+  function sTick(){beep(1046,.05);}
+  function sCrit(){beep(660,.1);beep(880,.1,.07);beep(1180,.18,.14);}
+  function sBad(){beep(200,.25,0,'sawtooth');}
+  function sWin(){beep(523,.15);beep(659,.15,.12);beep(784,.15,.24);beep(1047,.3,.36);}
+  function sLose(){beep(330,.2);beep(262,.35,.18);}
+
+  /* --- 화면 전환 --- */
+  function show(id){
+    var scrs=document.querySelectorAll('.screen'),i;
+    for(i=0;i<scrs.length;i++)scrs[i].classList.remove('active');
+    $(id).classList.add('active');
+    window.scrollTo(0,0);
+  }
+
+  /* --- 펫 --- */
+  function petLv(){return levelFromXp(S.xp);}
+  function petForm(){return petFormFor(petLv());}
+
+  /* --- 홈 --- */
+  function questRow(el,done,label,coin,prog){
+    el.className='q-row'+(done?' done':'');
+    el.innerHTML='<span>'+(done?'✅':'⬜')+' '+label+(done?'':prog)+'</span><b>+'+coin+'원</b>';
+  }
+  function renderHome(){
+    dailyCheck();
+    $('coin-chip').textContent=S.coins;
+    questRow($('qr1'),S.daily.q1,'오늘 3판 이기기',Q1_COIN,' ('+Math.min(S.daily.wins,3)+'/3)');
+    questRow($('qr2'),S.daily.q2,'별 ⭐⭐⭐로 1번 이기기',Q2_COIN,'');
+    questRow($('qr3'),S.week.qw,'이번 주 '+QW_WINS+'번 이기기',QW_COIN,' ('+Math.min(S.week.wins,QW_WINS)+'/'+QW_WINS+')');
+    var pf=petForm();
+    $('pet-face').textContent=pf.f;
+    $('pet-name').textContent=pf.n;
+    /* 레벨이 올라갈수록 한 칸이 길어지니 "다음까지 얼마"를 숫자로도 보여준다 */
+    var lv=petLv(), cur=xpForLevel(lv), nxt=xpForLevel(lv+1);
+    $('pet-lv').textContent='Lv.'+lv+' · 다음까지 '+(nxt-S.xp)+' · 친구 '+S.dex.length+'/'+BOSS_TOTAL+' · 악당 '+(S.cleared-Math.floor(S.cleared/5))+'/'+NORMAL_TOTAL;
+    $('pet-xp').style.width=((S.xp-cur)/(nxt-cur)*100)+'%';
+    $('btn-sound').textContent=S.sound?'🔊':'🔇';
+    renderMap();
+  }
+  function renderMap(){
+    var map=$('map'); map.innerHTML='';
+    var z,i;
+    for(z=0;z<ZONES.length;z++){
+      var zone=document.createElement('div'); zone.className='zone';
+      zone.innerHTML='<span class="zone-tag" style="--zc:'+ZONES[z].color+'">'+(z+1)+'구역 · '+ZONES[z].name+'</span><div class="zone-sub">'+ZONES[z].sub+'</div>';
+      var nodes=document.createElement('div'); nodes.className='nodes';
+      /* 보스 잠금: 구역의 일반 4판을 전부 별 3개로 깨야 열림 */
+      var zStar3=0,j;
+      for(j=z*5+1;j<=z*5+4;j++){if(S.stars&&S.stars[j]===3)zStar3++;}
+      for(i=z*5;i<z*5+5;i++){
+        var st=i+1, a=ANIMALS[i];
+        var cleared=st<=S.cleared, current=st===S.cleared+1;
+        var starGate=a.boss&&!cleared&&zStar3<4;
+        var locked=(!cleared)&&(st>S.cleared+1||starGate);
+        if(starGate)current=false;
+        var btn=document.createElement('button');
+        btn.className='node'+(a.boss?' boss':'')+(current?' current':'')+(locked?' locked':'');
+        btn.disabled=locked;
+        var rescued=S.dex.indexOf(st)>=0;
+        var face=a.boss?((cleared||rescued)?a.f:'❓'):a.f;
+        var nm=a.boss?(rescued?a.n+' (친구!)':'마법에 걸린 친구'):('악당 '+a.n);
+        var ds;
+        if(a.boss){
+          if(starGate)ds='🔒 이 구역 악당을 전부 별 ⭐⭐⭐로 이기면 열려! ('+zStar3+'/4)';
+          else if(rescued)ds='👑 언제든 다시 놀 수 있어';
+          else ds='👑 별 ⭐⭐⭐로 이겨야 마법이 풀려!';
+        }else ds=TYPES[MIX[st][0][0]];
+        btn.innerHTML='<span class="face">'+face+'</span>'+
+          '<span class="t"><span class="nm">'+st+'. '+nm+'</span>'+
+          '<span class="ds">'+ds+'</span></span>'+
+          '<span class="st" style="font-size:14px">'+(cleared?('⭐'.repeat((S.stars&&S.stars[st])||1)):(current?'▶️':'🔒'))+'</span>';
+        (function(stage){btn.addEventListener('click',function(){startBattle(stage);});})(st);
+        nodes.appendChild(btn);
+      }
+      zone.appendChild(nodes); map.appendChild(zone);
+    }
+  }
+
+  /* --- 배틀 --- */
+  var B=null;
+  var timerId=null;
+  /**
+   * 타이머: 연속 정답에 따라 7 → 6 → 최소 5초. 연속으로 두 번 시간을 넘기면 +2초.
+   *
+   * 숫자숲(4→2초)보다 길게 잡은 이유는 여기서 한 문제가 탭 한 번이 아니라 세로셈 한 판이기
+   * 때문이다. 시간은 **문제 하나 전체**에 걸린다 — 빈칸 하나마다가 아니다.
+   * 실제로 아이가 해 보고 빠듯하면 이 세 숫자만 올리면 된다.
+   *
+   * +2초를 **문제 단위가 아니라 전투 단위(toStreak)로 세는** 이유: 시간을 넘기면 문제가
+   * 새로 바뀌므로 "같은 문제에서 두 번"이라는 조건은 영영 성립하지 않는다.
+   */
+  function baseTime(){
+    var tb=timeFor(B.prob?B.prob.t:'M1');
+    var t=B.streak>=4?tb[2]:(B.streak>=2?tb[1]:tb[0]);
+    if(B.toStreak>=2)t+=2000;
+    return t;
+  }
+  function stopTimer(){if(timerId){clearInterval(timerId);timerId=null;}}
+  function startTimer(){
+    stopTimer();
+    B.tTotal=baseTime(); B.tEnd=Date.now()+B.tTotal;
+    var fill=$('t-fill');
+    fill.style.width='100%'; fill.className='';
+    timerId=setInterval(function(){
+      var left=B.tEnd-Date.now();
+      if(left<=0){stopTimer();onTimeout();return;}
+      fill.style.width=(left/B.tTotal*100)+'%';
+      fill.className=left<B.tTotal*.35?'hurry':'';
+    },80);
+  }
+  /**
+   * 시간 초과. 체력은 깎지 않고 **문제를 새로 낸다.**
+   *
+   * 같은 문제를 그대로 두면 세로셈에서는 이미 채운 칸이 남은 채로 시간만 더 받는 셈이라,
+   * 시간 제한이 사실상 없어진다. 못 푼 문제는 오답 풀에 넣어 뒤에 복습 문제로 다시 만난다.
+   */
+  function onTimeout(){
+    if(!B||B.busy)return;
+    B.streak=0; B.toStreak++;
+    var a=ANIMALS[B.stage-1], p=B.prob;
+    if(!S.stats[p.t])S.stats[p.t]={a:0,c:0,to:0};
+    S.stats[p.t].to=(S.stats[p.t].to||0)+1;
+    /* 시간을 넘긴 문제도 다시 만나야 는다. 오답과 같은 자리에 넣어 둔다. */
+    S.wrongPool.push({t:p.t,a:p.a,b:p.b});
+    if(S.wrongPool.length>30)S.wrongPool.shift();
+    save();
+    var ff=$('foe-face'); ff.classList.remove('dodge'); void ff.offsetWidth; ff.classList.add('dodge');
+    beep(330,.1); beep(240,.14,.08);
+    updateBars();
+    nextProblem();
+    $('b-msg').textContent='앗, 시간 초과! '+withJosa(a.n,'이','가')+' 피했어. 새 문제야!';
+  }
+  function startBattle(stage){
+    dailyCheck();
+    var a=ANIMALS[stage-1];
+    B={stage:stage,isReplay:stage<=S.cleared,foeMax:foeMaxHP(stage,!!a.boss),meHP:ME_MAX,streak:0,toStreak:0,busy:false,corrects:0,wrongTotal:0};
+    B.foeHP=B.foeMax;
+    var pf=petForm();
+    $('me-face').textContent=pf.f; $('me-name').textContent=pf.n;
+    $('foe-face').textContent=a.f; $('foe-name').textContent=(a.boss?'👑 ':'악당 ')+a.n;
+    $('b-stage').textContent=stage+'. '+ZONES[Math.floor((stage-1)/5)].name;
+    $('b-msg').textContent=a.boss?'심술 마법을 풀어서 '+withJosa(a.n,'을','를')+' 구하자!':'문제를 풀면 '+withJosa(pf.n,'이','가')+' 공격해!';
+    updateBars();
+    nextProblem();
+    show('scr-battle');
+  }
+  function updateBars(){
+    $('me-hp').style.width=Math.max(0,B.meHP/ME_MAX*100)+'%';
+    $('foe-hp').style.width=Math.max(0,B.foeHP/B.foeMax*100)+'%';
+    $('me-hptxt').textContent=Math.max(0,B.meHP)+' / '+ME_MAX;
+    $('foe-hptxt').textContent=Math.max(0,B.foeHP)+' / '+B.foeMax;
+    if(B.streak>=3){$('streak-badge').style.display='block';}else{$('streak-badge').style.display='none';}
+  }
+  /* ---------- 세로셈 판 ---------- */
+
+  /**
+   * 빈칸을 채우는 순서. 칸을 위→아래, 좌→우로 1234라 부르면 1 → 4 → 2 → 3 이다.
+   *
+   * 규칙은 하나다. **구해야 하는 값은 오른쪽부터, 이미 구한 값을 옮겨 적을 때는 왼쪽부터.**
+   * 올림은 오른쪽에서 왼쪽으로 흐르니 올림·일의 자리는 그 순서가 맞고,
+   * 7×6+3=45 는 이미 머릿속에 있는 수라 사람은 4를 먼저 쓴다. 여기서 오른쪽부터 물으면
+   * 아는 수를 거꾸로 분해하게 시키는 셈이 된다.
+   */
+  function vcell(g,r,c,text,cls){
+    var d=document.createElement('div');
+    d.className='vcell'+(cls?' '+cls:'');
+    d.style.gridRow=r; d.style.gridColumn=c;
+    if(text!==null&&text!==undefined)d.textContent=text;
+    g.appendChild(d);
+    return d;
+  }
+  /** 수를 한 자리씩 자기 칸에 넣는다. 세로셈에서 자리 정렬은 장식이 아니라 내용이다. */
+  function digitsAt(g,row,endCol,str,cls){
+    var s=String(str), k, start=endCol-s.length+1;
+    for(k=0;k<s.length;k++)vcell(g,row,start+k,s[k],cls);
+  }
+  function ruleAt(g,row,c1,c2){
+    var d=document.createElement('div');
+    d.className='vrule'; d.style.gridRow=row; d.style.gridColumn=c1+' / '+(c2+1);
+    g.appendChild(d);
+    return d;
+  }
+  /** 여러 자리를 한 번에 받는 빈칸. 맞히면 자리별 칸으로 바꿔 넣는다. */
+  function spanBlank(g,row,c1,c2){
+    var d=document.createElement('div');
+    d.className='vcell vblank wide';
+    d.style.gridRow=row; d.style.gridColumn=c1+' / '+(c2+1);
+    g.appendChild(d);
+    return d;
+  }
+
+  /* ---------- 곱셈 세로셈 ---------- */
+  function drawMul(p){
+    var g=$('q-grid');
+    g.innerHTML='';
+    g.style.gridTemplateColumns='repeat(4, 44px)';
+    B.cells={}; B.g=g;
+    /* 올림 칸을 아이가 채우는 것은 자리별 세로셈(M1·M1c)뿐이다.
+       보스전은 답만 한 번에 받고, 분해 방식은 올림을 마지막 덧셈에서 한꺼번에 처리하므로
+       둘 다 올림 칸이 필요 없다. 만들어 두면 끝까지 빈 채로 남아 아이가 "여긴 뭐지?" 한다.
+       올림을 보여주는 판(M4c)은 화면이 그 자리에 올림을 **미리 적어 둔다** — 그것이 힌트다. */
+    if(isCarryShown(p.t))vcell(g,1,3,p.carry>0?p.carry:'','carry');
+    else if(!isOneShot(p.t)&&!isSplit(p.t)&&p.carry>0)B.cells.carry=vcell(g,1,3,'','carry vblank');
+    else vcell(g,1,3,'');
+    vcell(g,2,3,p.tens); vcell(g,2,4,p.u);
+    vcell(g,3,2,'×','op'); vcell(g,3,4,p.b);
+    ruleAt(g,4,2,4);
+    if(isOneShot(p.t)){
+      B.cells.whole=spanBlank(g,5,2,4);
+      B.slots={whole:{row:5,end:4,str:String(p.ans)}};
+      return;
+    }
+    if(isSplit(p.t)){
+      /* 십의 자리 곱을 **위에** 둔다. 머릿속에서도 큰 쪽부터 잡고 나머지를 더하기 때문이다.
+         끝나는 열은 gridSteps가 정한다 — 십의 자리 곱만 한 칸 왼쪽에서 끝난다. */
+      var rowOfKey={tp:5,op:6,sum:8};
+      B.slots={};
+      gridSteps(p).forEach(function(st){
+        var r=rowOfKey[st.key], s=String(st.val);
+        B.slots[st.key]={row:r,end:st.end,str:s};
+        B.cells[st.key]=spanBlank(g,r,st.end-s.length+1,st.end);
+      });
+      ruleAt(g,7,2,4);
+      return;
+    }
+    if(String(p.ans).length===3)B.cells.huns=vcell(g,5,2,'','vblank');
+    B.cells.tens=vcell(g,5,3,'','vblank');
+    B.cells.ones=vcell(g,5,4,'','vblank');
+    B.slots={};
+  }
+
+  /* ---------- 나눗셈 세로셈 ---------- */
+  /*
+   * 나눗셈 격자.
+   *
+   * ⚠️ 열 배치가 문제마다 다르다. 한 자리로 나누면 몫이 나누어지는 수의 첫 자리 위에 오지만,
+   * 두 자리로 나누면 두 자리를 한꺼번에 봐야 하므로 몫이 **둘째 자리 위**에서 시작한다.
+   * 그래서 몫도 곱한 값도 `work[i].col`이 가리키는 열을 기준으로 놓는다.
+   * 나누는 수도 두 자리일 수 있어 왼쪽 칸 수를 그때그때 센다.
+   */
+  function drawDiv(p){
+    var g=$('q-grid'), i;
+    var dw=String(p.b).length;          // 나누는 수의 자릿수
+    g.innerHTML='';
+    g.style.gridTemplateColumns='repeat('+dw+', 34px) 18px repeat('+p.digits.length+', 40px)';
+    B.cells={}; B.g=g; B.slots={}; B.C0=dw+2;
+    var brCol=dw+1;
+    /* 몫은 맨 윗줄. 단계 수만큼만, 그 단계가 끝나는 열에 놓는다.
+       곱한 값만 넣는 판(Dp)에서는 몫을 화면이 적으므로 빈칸 테두리를 두지 않는다 —
+       테두리가 있으면 아이가 거기부터 채우려 든다. */
+    for(i=0;i<p.work.length;i++)B.cells['q'+i]=vcell(g,1,B.C0+p.work[i].col,'',isProdOnly(p.t)?'':'vblank');
+    /* 나누는 수 · 괄호 · 나누어지는 수 */
+    var top=ruleAt(g,2,brCol,B.C0+p.digits.length-1);
+    top.style.alignSelf='start';
+    for(i=0;i<dw;i++)vcell(g,2,1+i,String(p.b)[i]);
+    var br=document.createElement('div');
+    br.className='vbracket'; br.style.gridRow=2; br.style.gridColumn=brCol;
+    g.appendChild(br);
+    for(i=0;i<p.digits.length;i++)vcell(g,2,B.C0+i,p.digits[i]);
+    /* 단계마다 세 줄씩 쓴다: 곱한 값 / 가로줄 / 뺀 값 */
+    B.rowOf=[];
+    for(i=0;i<p.work.length;i++)B.rowOf.push(3+i*3);
+    if(isProdOnly(p.t))makeProdBlank(0);
+  }
+  /** 곱한 값 아래 가로줄. 곱한 값과 나눌 수 중 긴 쪽만큼 긋는다. */
+  function revealRule(i){
+    var w=B.prob.work[i], end=B.C0+w.col;
+    var span=Math.max(String(w.prod).length,String(w.cur).length);
+    ruleAt(B.g,B.rowOf[i]+1,end-span+1,end);
+  }
+  /** 몫 한 자리를 맞히면 곱한 값과 가로줄이 저절로 나타난다. */
+  function revealProd(i){
+    var w=B.prob.work[i];
+    digitsAt(B.g,B.rowOf[i],B.C0+w.col,w.prod,'dim');
+    revealRule(i);
+  }
+  /** Dp에서 곱한 값을 맞히면 몫이 저절로 적힌다. 화면이 채운 값이라 흐리게 둔다. */
+  function revealQuot(i){
+    var c=B.cells['q'+i];
+    c.textContent=B.prob.work[i].qd; c.classList.add('dim');
+  }
+  /**
+   * Dp에서 아이가 직접 채울 곱한 값 칸을 만든다. 그 단계가 끝나는 열에서 끝난다.
+   * 한 자리면 보통 빈칸, 두 자리면 걸친 빈칸을 쓴다 — 걸친 빈칸은 최소 너비가 있어
+   * 한 칸에 두면 오른쪽으로 삐져나온다.
+   */
+  function makeProdBlank(i){
+    var w=B.prob.work[i], end=B.C0+w.col, s=String(w.prod);
+    B.slots['p'+i]={row:B.rowOf[i],end:end,str:s};
+    B.cells['p'+i]=s.length>1?spanBlank(B.g,B.rowOf[i],end-s.length+1,end):vcell(B.g,B.rowOf[i],end,'','vblank');
+  }
+  /** 뺀 값(과 다음 자리를 내려 쓴 수)을 화면에 적는다. */
+  function revealRem(i,cls){
+    var c=remCols(B.prob,i,B.C0);
+    digitsAt(B.g,B.rowOf[i]+2,c.end,c.str,cls||'dim');
+  }
+  /** D1에서 아이가 직접 채울 뺀 값 칸을 만든다. 열 범위는 remCols가 정한다. */
+  function makeRemBlank(i){
+    var c=remCols(B.prob,i,B.C0);
+    B.slots['r'+i]={row:B.rowOf[i]+2,end:c.end,str:c.str};
+    B.cells['r'+i]=spanBlank(B.g,B.rowOf[i]+2,c.start,c.end);
+  }
+
+  /** 지금 물어보는 칸을 표시한다. 아이는 이 테두리만 보고 어디를 채울지 안다. */
+  function syncGrid(){
+    var k;
+    for(k in B.cells)if(B.cells[k])B.cells[k].classList.remove('on');
+    var st=B.steps[B.si];
+    if(st&&B.cells[st.key]){B.cells[st.key].classList.add('on');B.cells[st.key].textContent=B.input;}
+    /* 분해 방식은 무엇을 구하는지 말로 짚어 준다. 33 × 4 처럼 두 자리가 같으면
+       칸만 보고는 십의 자리를 묻는지 일의 자리를 묻는지 가릴 방법이 없다. */
+    if(st&&st.say)$('b-msg').textContent=st.say;
+  }
+
+  function nextProblem(){
+    B.prob=makeProblem(B.stage,S.wrongPool);
+    B.misses=0; B.input='';
+    /* 연달아 시간을 넘기고 있으면 새 문제에도 힌트를 남겨 둔다 — 힌트는 유형별이라 그대로 통한다 */
+    var h=$('q-hint');
+    if(B.toStreak>=2){h.textContent=HINTS[B.prob.t]||HINTS.DEF;h.style.display='block';}
+    else h.style.display='none';
+    if(isDiv(B.prob.t))drawDiv(B.prob); else drawMul(B.prob);
+    B.steps=stepsFor(B.prob); B.si=0;
+    syncGrid();
+    if(B.prob.review){$('b-msg').textContent='⭐ 복습 문제! 지난번에 틀렸던 거야';}
+    startTimer();
+  }
+  function renderInput(){ syncGrid(); }
+
+  /** 맞힌 칸을 자리별 숫자로 바꿔 넣는다. 여러 자리 칸은 걸쳐 있던 빈칸을 걷어낸다. */
+  function settleCell(key,val){
+    var cell=B.cells[key], slot=B.slots[key];
+    if(slot&&slot.str.length>1){
+      cell.remove(); B.cells[key]=null;
+      digitsAt(B.g,slot.row,slot.end,slot.str,'fresh');
+    }else{
+      cell.classList.remove('on','bad'); cell.classList.add('ok');
+      cell.textContent=val;
+    }
+  }
+
+  /**
+   * 확인 버튼은 없다. 자릿수가 차는 순간 채점한다 — 숫자숲과 같다.
+   * 한 자리 칸은 누르는 즉시, 여러 자리 칸은 자릿수가 찼을 때 채점된다.
+   */
+  function onDigits(){
+    /* 문제를 다 푼 뒤(다음 문제가 그려지기 전 700ms) 눌린 키가 여기까지 올 수 있다.
+       그때는 물어볼 칸이 없으므로 조용히 무시한다. */
+    var st=B.steps&&B.steps[B.si];
+    if(!st)return;
+    if(B.input.length<st.digits){renderInput();return;}
+    var cell=B.cells[st.key];
+    if(Number(B.input)===st.val){
+      settleCell(st.key,st.val);
+      B.input=''; B.si++;
+      /* 나눗셈: 무엇을 넣는 판이냐에 따라 화면이 채워 주는 것이 다르다. */
+      if(isDiv(B.prob.t)){
+        var i=Number(st.key.slice(1)), last=i===B.prob.work.length-1, dt=B.prob.t;
+        if(st.key.charAt(0)==='p'){
+          /* 곱한 값만 넣기(Dp): 몫이 저절로 적히고 뺀 값도 바로 내려온다. 그리고 다음 곱한 값 칸. */
+          revealQuot(i); revealRule(i); revealRem(i,last?'fresh':'dim');
+          if(!last)makeProdBlank(i+1);
+        }else if(st.key.charAt(0)==='q'){
+          if(isLateRem(dt)){
+            /* 보스: 앞 단계의 뺀 값은 **다음 몫을 넣은 뒤에** 보여준다. 미리 보여주면 아이가
+               머리로 구해야 할 수를 화면이 대신 알려주는 셈이 된다.
+               582÷3이면 1을 넣을 때는 3만, 9를 넣을 때 비로소 28과 27이 나온다. */
+            if(i>0)revealRem(i-1,'dim');
+            revealProd(i);
+            if(last)revealRem(i,'fresh');
+          }else if(isQuotOnly(dt)){
+            /* 몫만 넣고 바로 보여주기(Dqw): 곱한 값도 뺀 값도 그 자리에서 나온다. 어림만 연습한다. */
+            revealProd(i);
+            revealRem(i,last?'fresh':'dim');
+          }else{
+            /* 몫+뺀 값(D1): 곱한 값만 화면이 채우고 뺀 값은 아이가 넣는다. */
+            revealProd(i);
+            if(last)revealRem(i,'fresh'); else makeRemBlank(i);
+          }
+        }
+      }
+      if(B.si>=B.steps.length){submit();}
+      else{syncGrid(); sTick();}
+    }else{
+      cell.classList.add('bad');
+      var typed=B.input;
+      B.input=''; cell.textContent='';
+      // 어느 자리에서 틀렸는지까지 남긴다. 부모님 화면에서 "36 × 4 → 일의 자리 5"로 보인다.
+      wrongAnswer((SLOT_NAME[st.key]||divSlotName(st.key))+' '+typed);
+      setTimeout(function(){if(cell)cell.classList.remove('bad');},320);
+    }
+  }
+  /** 오답 기록에 남길 칸 이름. 몫의 자리 이름은 단계 수에서 거꾸로 센다 —
+      두 자리로 나누면 몫이 두 자리라 첫 단계가 백이 아니라 십의 자리다. */
+  function divSlotName(key){
+    var n=B.prob.work.length, i=Number(key.slice(1));
+    var place=['백','십','일'].slice(3-n)[i]||'';
+    if(key.charAt(0)==='q')return '몫의 '+place+'의 자리';
+    return key.charAt(0)==='p'?'곱한 값':'뺀 값';
+  }
+  function floatDmg(txt,side,color){
+    var arena=$('arena');
+    var el=document.createElement('span');
+    el.className='dmgfloat num'; el.textContent=txt;
+    el.style.color=color;
+    el.style[side==='foe'?'right':'left']='18%';
+    el.style.top='30%';
+    arena.appendChild(el);
+    setTimeout(function(){el.remove();},850);
+  }
+  function statAdd(t,ok){
+    if(!S.stats[t])S.stats[t]={a:0,c:0};
+    S.stats[t].a++; if(ok)S.stats[t].c++;
+  }
+  /**
+   * 오답 처리. 세로셈 빈칸 하나를 틀린 것도, 보스전 암산을 틀린 것도 여기로 온다.
+   * 문제는 그대로 두고 같은 자리를 다시 묻는다 — 숫자숲과 같다.
+   */
+  function wrongAnswer(givenText){
+    var p=B.prob;
+    stopTimer();
+    statAdd(p.t,false);
+    B.streak=0; B.misses++; B.wrongTotal++;
+    if(B.misses===1){
+      S.wrongPool.push({t:p.t,a:p.a,b:p.b});
+      if(S.wrongPool.length>30)S.wrongPool.shift();
+      S.wrongLog.unshift({q:p.a+' '+p.op+' '+p.b,given:givenText,ans:p.ans,d:today()});
+      if(S.wrongLog.length>20)S.wrongLog.pop();
+    }
+    B.meHP-=FOE_ATK;
+    $('b-msg').textContent=CHEER[ri(0,CHEER.length-1)];
+    if(B.misses>=2){var h=$('q-hint');h.textContent=HINTS[p.t]||HINTS.DEF;h.style.display='block';}
+    sBad();
+    floatDmg('-'+FOE_ATK,'me','#D14B4B');
+    var mf=$('me-face'); mf.classList.remove('hit'); void mf.offsetWidth; mf.classList.add('hit');
+    renderInput(); updateBars(); save();
+    if(B.meHP<=0){B.busy=true;setTimeout(lose,600);}
+    else{startTimer();}
+  }
+
+  /** 문제 하나를 온전히 푼 순간 호출된다. 여기서만 적을 때린다. */
+  function submit(){
+    if(B.busy)return;
+    var p=B.prob;
+    stopTimer();
+    {
+      statAdd(p.t,true);
+      B.toStreak=0;
+      S.xp+=1;
+      /* 크리티컬: 3연속 정답 또는 남은 시간 절반 이상(스피드) */
+      var streakCrit=B.streak>=2;
+      var speedCrit=(B.tEnd-Date.now())>=B.tTotal*.5;
+      var crit=streakCrit||speedCrit;
+      B.streak++;
+      var dmg=crit?CRIT:ATK;
+      B.foeHP-=dmg; B.corrects++;
+      $('b-msg').textContent=(speedCrit?'⚡ 번개같이 빨라! 크리티컬! ':(streakCrit?'🔥 3연속 크리티컬! ':''))+PRAISE[ri(0,PRAISE.length-1)];
+      crit?sCrit():sOK();
+      floatDmg('-'+dmg,'foe','#D14B4B');
+      var ff=$('foe-face'); ff.classList.remove('hit'); void ff.offsetWidth; ff.classList.add('hit');
+      updateBars(); save();
+      B.busy=true;
+      setTimeout(function(){
+        B.busy=false;
+        if(B.foeHP<=0){win();}else{nextProblem();}
+      },700);
+    }
+  }
+
+  /* --- 승리/패배 --- */
+  function win(){
+    stopTimer();
+    var a=ANIMALS[B.stage-1];
+    var stars=B.wrongTotal===0?3:(B.wrongTotal<=2?2:1);
+    if(!S.stars)S.stars={};
+    if(!S.stars[B.stage]||stars>S.stars[B.stage])S.stars[B.stage]=stars;
+    var lines='';
+    dailyCheck();
+    S.daily.wins++; S.week.wins++;
+    if(stars===3)S.daily.star3++;
+    var got=B.isReplay?0:(a.boss?5:1);
+    var questLines=[];
+    if(!S.daily.q1&&S.daily.wins>=3){S.daily.q1=true;got+=Q1_COIN;questLines.push('🎯 퀘스트 달성! 오늘 3판 승리 <b>+'+Q1_COIN+'원</b>');}
+    if(!S.daily.q2&&S.daily.star3>=1){S.daily.q2=true;got+=Q2_COIN;questLines.push('🎯 퀘스트 달성! 별 ⭐⭐⭐ 승리 <b>+'+Q2_COIN+'원</b>');}
+    if(!S.week.qw&&S.week.wins>=QW_WINS){S.week.qw=true;got+=QW_COIN;questLines.push('🏆 주간 퀘스트 달성! 이번 주 '+QW_WINS+'승 <b>+'+QW_COIN+'원</b>');}
+    S.coins+=got; S.xp+=5;
+    /* 친구 구출은 보스전을 별 3개(무실수)로 이겼을 때만 */
+    var notYet=a.boss&&S.dex.indexOf(B.stage)<0;
+    var newFriend=notYet&&stars===3;
+    var missedRescue=notYet&&stars<3;
+    if(newFriend)S.dex.push(B.stage);
+    if(B.stage>S.cleared)S.cleared=B.stage;
+    save();
+    $('w-face').textContent=a.f;
+    $('w-title').textContent=newFriend?'마법이 풀렸어!':(missedRescue?'이겼다... 어라?':(a.boss?'승리!':'악당을 물리쳤다!'));
+    $('w-sub').textContent=newFriend?('✨ '+withJosa(a.n,'이','가')+' 곱셈 바다 친구가 되었어요!'):(missedRescue?(withJosa(a.n,'이','가')+' 아직 마법에 걸려 있어! 한 번도 안 틀리고 이기면 풀릴 거야'):(a.boss?(withJosa(a.n,'과','와')+' 즐겁게 놀았어요'):('악당 '+withJosa(a.n,'을','를')+' 혼내줬어요')));
+    $('w-stars').textContent='⭐'.repeat(stars)+'☆'.repeat(3-stars);
+    if(got>0)lines+='🐷 용돈 +'+got+'원<br>';
+    lines+='⭐ 경험치 +'+(B.corrects+5)+'<br>';
+    var qi;
+    for(qi=0;qi<questLines.length;qi++)lines+=questLines[qi]+'<br>';
+    if(missedRescue)lines+='💫 별 ⭐⭐⭐로 다시 도전하면 친구가 돼!<br>';
+    else if(stars<3)lines+='한 번도 안 틀리면 별 3개! 🌟<br>';
+    if(newFriend)lines+='📖 친구 도감에 '+a.n+' 등록!';
+    $('w-card').innerHTML=lines;
+    /* 구출 실패 시엔 같은 보스 재도전 버튼으로 */
+    nextTarget=missedRescue?B.stage:Math.min(STAGES,S.cleared+1);
+    $('btn-next').textContent=missedRescue?'한 번 더 도전! 💪':'다음 모험 ➜';
+    $('btn-next').style.display=(S.cleared>=STAGES&&!missedRescue)?'none':'inline-block';
+    if(S.cleared>=STAGES&&S.dex.length>=BOSS_TOTAL){$('w-sub').textContent='시즌1 클리어! 친구를 모두 구해냈어요 🎊';}
+    sWin();
+    show('scr-win');
+  }
+  function lose(){
+    stopTimer();
+    var a=ANIMALS[B.stage-1];
+    var pct=Math.round((1-B.foeHP/B.foeMax)*100);
+    $('l-sub').textContent=a.n+' 체력을 '+pct+'%나 깎았어! 한 번 더 하면 이길 수 있어';
+    $('l-card').innerHTML='맞힌 문제 <b class="num">'+B.corrects+'개</b> 💪<br>다시 도전하면 처음부터 체력 가득!';
+    sLose(); save();
+    show('scr-lose');
+  }
+
+  /* --- 도감 --- */
+  function renderDex(){
+    var g=$('dex-grid'); g.innerHTML='';
+    var i;
+    var fh=document.createElement('div');
+    fh.style.cssText='grid-column:1/-1;font-family:Jua;color:var(--sea-deep);font-size:16px';
+    fh.textContent='✨ 구해낸 친구들';
+    g.appendChild(fh);
+    for(i=4;i<STAGES;i+=5){
+      var a=ANIMALS[i], has=S.dex.indexOf(i+1)>=0;
+      var d=document.createElement('div');
+      d.className='d'+(has?'':' no');
+      d.innerHTML='<div class="f">'+(has?a.f:'❓')+'</div><div class="n">'+(has?a.n:'???')+'</div>';
+      g.appendChild(d);
+    }
+    var vh=document.createElement('div');
+    vh.style.cssText='grid-column:1/-1;font-family:Jua;color:var(--ink-soft);font-size:16px;margin-top:8px';
+    vh.textContent='⚔️ 물리친 악당들';
+    g.appendChild(vh);
+    for(i=0;i<STAGES;i++){
+      if(ANIMALS[i].boss)continue;
+      var a2=ANIMALS[i], beat=(i+1)<=S.cleared;
+      var d2=document.createElement('div');
+      d2.className='d'+(beat?'':' no');
+      d2.innerHTML='<div class="f">'+(beat?a2.f:'❓')+'</div><div class="n">'+(beat?a2.n:'???')+'</div>';
+      g.appendChild(d2);
+    }
+  }
+
+  /* --- 부모님 페이지 --- */
+  function renderParent(){
+    /* 표의 줄 순서는 사다리 순서다(스테이지 순으로 처음 나오는 유형). 숫자숲에서 복사해 온
+       'A1c' 같은 이름을 그대로 두면 첫 세 줄이 "undefined"로 찍힌다(실제로 그랬다). */
+    var order=[], s2;
+    for(s2=1;s2<=STAGES;s2++)MIX[s2].forEach(function(m){if(order.indexOf(m[0])<0)order.push(m[0]);});
+    for(var k in S.stats){if(order.indexOf(k)<0&&S.stats[k]&&S.stats[k].a>0)order.push(k);}
+    var html='<table class="stat-tbl"><tr><th>문제 유형</th><th class="num">푼 횟수</th><th class="num">정답률</th><th class="num">시간초과</th></tr>';
+    var i;
+    for(i=0;i<order.length;i++){
+      var t=order[i], st=S.stats[t];
+      if(!st||st.a===0){html+='<tr><td>'+TYPES[t]+'</td><td class="num">0</td><td class="num">-</td><td class="num">'+((st&&st.to)||0)+'</td></tr>';continue;}
+      var acc=Math.round(st.c/st.a*100);
+      var cls=acc>=80?'acc-good':(acc<60?'acc-bad':'');
+      html+='<tr><td>'+TYPES[t]+'</td><td class="num">'+st.a+'</td><td class="num '+cls+'">'+acc+'%</td><td class="num">'+(st.to||0)+'</td></tr>';
+    }
+    html+='</table>';
+    html+='<h3 style="margin-top:18px;font-size:16px">최근 틀린 문제</h3><div class="wrong-list">';
+    if(S.wrongLog.length===0)html+='아직 없어요!';
+    for(i=0;i<Math.min(12,S.wrongLog.length);i++){
+      var w=S.wrongLog[i];
+      html+='<span class="num">'+w.q+' → '+w.given+' (정답 '+w.ans+')</span>';
+    }
+    html+='</div><div style="margin-top:16px;background:#fff;border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px"><span>🐷 저금통 <b class="num">'+S.coins+'원</b></span><button class="x" id="btn-payout">용돈 지급 완료</button></div>';
+    html+='<p class="note">· 구역은 곱셈(올림 없음) → 나눗셈 → 곱셈(올림) → 나눗셈 순입니다. 곱셈이든 나눗셈이든 모두 세로셈으로 보여 줍니다.<br>· 곱셈 세로셈의 빈칸 순서는 올림 → 일의 자리 → 백의 자리 → 십의 자리입니다. 앞의 둘은 올림이 오른쪽에서 왼쪽으로 흐르니 오른쪽부터이고, 뒤의 둘은 이미 구한 두 자리 수를 옮겨 적는 단계라 왼쪽부터입니다.<br>· 1구역(올림 없음)은 세로셈 두 판 → <b>십의 자리부터 분해해서 더하기</b> 두 판 → 보스 순입니다. 세로셈은 오른쪽부터 계산하지만 암산은 왼쪽부터가 훨씬 쉽습니다. 답의 크기가 먼저 잡히고 자릿수를 거꾸로 외울 필요가 없기 때문입니다. 보스가 바로 그 암산이라, 세로셈만 연습시키면 보스에서 배운 적 없는 방법을 요구하게 됩니다. 분해 단계가 그 다리 역할을 합니다.<br>· 3구역(올림)은 분해 두 판 → <b>올림을 보여주고 답을 한 번에</b> 두 판 → 보스 순입니다. 세로셈은 1구역에서 익혔으니 바로 분해로 들어가고, 보스 직전에 계단을 하나 둡니다. 66 × 6 이면 올림 3을 화면이 미리 적어 두고 아이는 396을 한 번에 씁니다. 보스는 그 올림마저 걷어냅니다. 올림 칸을 아이가 직접 채우는 세로셈은 이 게임에서 1구역에만 있습니다.<br>· 분해는 42 × 3 이면 십의 자리 4 × 3 → 일의 자리 2 × 3 → 둘을 더하기, 이렇게 세 번을 묻습니다. 값은 자리별로 쪼개지 않고 통째로 받습니다. 12는 "1, 2" 두 자리가 아니라 하나의 크기로 다뤄야 머릿속 계산과 같아지기 때문입니다.<br>· 십의 자리 곱은 <b>끝의 0을 빼고</b> 적습니다. 42 × 3 이면 120이 아니라 12를 넣고, 한 칸 왼쪽에서 끝나 자리가 0을 대신합니다. 그 0에는 구할 것이 없는데 제한 시간 안에 한 번 더 눌러야 했습니다.<br>· 곱셈 보스는 세로셈으로 보여 주되 올림 칸 없이 답을 한 번에 받습니다. 난이도는 그 구역에서 연습한 것과 같습니다 — 올림 없는 곱셈만 배운 구역의 보스는 올림 없는 문제만 냅니다.<br>· 나눗셈은 네 구역 모두 나머지가 없는 문제만 냅니다. 2구역은 세 자리 ÷ 한 자리(나누는 수 2~6), 4구역은 세 자리 ÷ 두 자리(나누는 수 11~49)입니다.<br>· 두 자리로 나누면 첫 자리 하나로는 절대 나눠지지 않아 두 자리를 한꺼번에 봅니다. 그래서 몫을 <b>어림</b>해야 하고, 이것이 4구역이 어려운 진짜 이유입니다. 참고로 두 자리로 나누기는 4학년 과정입니다.<br>· 몫에 0이 들어가는 경우(609÷3=203)는 0을 빼먹는 대표적 함정이라 따로 가르쳐야 해서 뺐습니다.<br>· 2구역 나눗셈은 처음 두 판에서 <b>곱한 값만</b> 넣습니다. 582 ÷ 3 이면 3 → (몫 1이 저절로 적히고 28이 내려옴) → 27 → (몫 9, 12) → 12 → (몫 4). 나누는 수의 구구단에서 넘지 않는 가장 큰 것을 찾는 연습만 남기고 뺄셈을 걷어낸 판입니다. 다음 두 판은 몫과 뺀 값을 모두 넣고(곱한 값은 저절로 채워집니다), <b>보스에서는 몫만</b> 넣습니다. 곱셈 구역과 같은 리듬입니다 — 일반은 도움을 주고 보스는 도움을 걷어내되 산수는 그대로입니다.<br>· 4구역은 처음 두 판에서 <b>몫만</b> 넣고 곱한 값과 뺀 값이 그 자리에서 바로 나옵니다. 두 자리로 나눌 땐 구구단이 없어 곱한 값을 넣으려면 23 × 7 같은 암산이 필요하고, 그러면 처음 두 판이 다음 두 판보다 어려워지기 때문에 어림만 연습합니다. 다음 두 판은 몫과 뺀 값, 보스는 몫만입니다.<br>· 보스에서 앞 단계의 뺀 값은 다음 몫을 넣은 뒤에야 보입니다. 미리 보여주면 아이가 머리로 구해야 할 수를 화면이 대신 알려주는 셈이라서입니다.<br>· 빈칸은 한 자리씩이라 누르는 즉시 채점됩니다. 확인 버튼은 없습니다.<br>· 틀린 문제는 다음 배틀에 "복습 문제"로 다시 나옵니다. 어느 자리에서 틀렸는지도 아래 목록에 남습니다.<br>· 정답률 80% 이상 초록, 60% 미만 빨강.<br>· 타이머: 곱셈은 세로셈·올림 보여주고 답 한 번에·보스 모두 7초에서 6→최소 5초, 분해만 10초에서 9→최소 8초, 나눗셈은 한 자리로 나누기가 15초에서 12→최소 10초, 두 자리로 나누기가 19초에서 16→최소 13초입니다. 나눗셈이 긴 것은 한 문제에 입력이 3~5번이기 때문입니다. 시간은 빈칸 하나가 아니라 문제 하나 전체에 걸립니다 (시간 초과는 데미지가 없지만 문제가 새로 바뀝니다. 못 푼 문제는 복습으로 다시 나옵니다. 체력이 깎이는 것은 오답일 때뿐입니다).<br>· 보스는 구역 4판을 전부 별 3개로 깨야 열리고, 보스전도 무실수(별 3개)로 이겨야 친구 구출.<br>· 시간초과가 많고 오답이 적으면 "알지만 느린" 상태 — 유창성 연습 단계입니다.<br>· 용돈: 승리 +1원(보스 +5원, 재도전 0원), 일일 퀘스트 20+20원, 주간 15승 30원 — 매일 다 하면 주당 약 300~330원.<br>· 용돈은 더하기 빼기와 따로 쌓입니다. 게임마다 저금통이 따로 있습니다.<br>· 용돈을 지급하셨으면 "용돈 지급 완료"를 눌러 0원으로 초기화하세요 (두 번 눌러 확인).</p>';
+    $('p-body').innerHTML=html;
+    var pb=$('btn-payout'), armed=false, armT=null;
+    pb.addEventListener('click',function(){
+      if(!armed){armed=true;pb.textContent='정말요? 한 번 더!';armT=setTimeout(function(){armed=false;pb.textContent='용돈 지급 완료';},3000);return;}
+      clearTimeout(armT);S.coins=0;save();renderParent();renderHome();
+    });
+  }
+
+  /* --- 이벤트 --- */
+  /**
+   * 숫자 입력.
+   *
+   * 한 자리 칸은 누른 숫자를 그대로 채점한다. 보스전 답과 나눗셈의 뺀 값처럼 여러 자리인
+   * 칸만 자릿수가 찰 때까지 모았다가 채점한다. 몇 자리인지는 화면의 칸 너비로 이미 보인다.
+   */
+  function typeDigit(k){
+    if(!B||B.busy||!B.steps)return;
+    var need=B.steps[B.si]?B.steps[B.si].digits:1;
+    if(need>1){ if(B.input.length<need)B.input+=k; }
+    else B.input=k;
+    onDigits();
+  }
+  $('pad').addEventListener('click',function(e){
+    var k=e.target.getAttribute&&e.target.getAttribute('data-k');
+    if(!k||!B||B.busy)return;
+    if(k==='del'){ B.input=B.input.slice(0,-1); renderInput(); }
+    else typeDigit(k);
+  });
+  document.addEventListener('keydown',function(e){
+    if(!$('scr-battle').classList.contains('active')||!B||B.busy)return;
+    if(e.key>='0'&&e.key<='9')typeDigit(e.key);
+    else if(e.key==='Backspace'){B.input=B.input.slice(0,-1);renderInput();}
+  });
+  $('btn-flee').addEventListener('click',function(){stopTimer();renderHome();show('scr-home');});
+  var nextTarget=1;
+  function bossGateOK(stage){
+    if(stage%5!==0||stage<=S.cleared)return true;
+    var z=Math.floor((stage-1)/5),c=0,j;
+    for(j=z*5+1;j<=z*5+4;j++){if(S.stars&&S.stars[j]===3)c++;}
+    return c===4;
+  }
+  $('btn-next').addEventListener('click',function(){
+    var nx=nextTarget||Math.min(STAGES,S.cleared+1);
+    if(bossGateOK(nx)){startBattle(nx);}
+    else{renderHome();show('scr-home');}
+  });
+  $('btn-home1').addEventListener('click',function(){renderHome();show('scr-home');});
+  $('btn-retry').addEventListener('click',function(){startBattle(B.stage);});
+  $('btn-home2').addEventListener('click',function(){renderHome();show('scr-home');});
+  $('btn-sound').addEventListener('click',function(){S.sound=!S.sound;save();$('btn-sound').textContent=S.sound?'🔊':'🔇';});
+  $('btn-dex').addEventListener('click',function(){renderDex();$('m-dex').classList.add('open');});
+  $('btn-parent').addEventListener('click',function(){
+    $('p-gate').style.display='block';$('p-body').style.display='none';
+    $('gate-in').value='';$('gate-msg').textContent='';
+    $('m-parent').classList.add('open');
+  });
+  $('gate-ok').addEventListener('click',function(){
+    if($('gate-in').value.trim()==='391'){
+      $('p-gate').style.display='none';$('p-body').style.display='block';renderParent();
+    }else{$('gate-msg').textContent='앗, 다시 계산해 보세요!';}
+  });
+  document.addEventListener('click',function(e){
+    var c=e.target.getAttribute&&e.target.getAttribute('data-close');
+    if(c)$(c).classList.remove('open');
+  });
+
+  /* --- 시작 --- */
+  /* 홈(포털) 버튼: 정적 호스팅에서 상위 폴더의 포털로 이동. 아티팩트/로컬 파일에서는 숨김 */
+  if(/claude|^file$/.test(location.hostname||'file')||location.protocol==='file:'){$('btn-portal').style.display='none';}
+  load(); dailyCheck(); renderHome();
+})();}
+
+</script>
+
+</body>
+</html>

@@ -30,6 +30,8 @@ const ASSETS = [
   './icons/icon-512.png',
   './math/',
   './math/index.html',
+  './mul/',
+  './mul/index.html',
 ];
 
 /** 이 워커가 맡은 범위 안에서의 상대 경로. 로컬(/)과 Pages(/omok/) 양쪽에서 같게 나온다. */

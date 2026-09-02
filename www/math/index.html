@@ -517,11 +517,14 @@ if(typeof document!=='undefined'){(function(){
   /* --- 배틀 --- */
   var B=null;
   var timerId=null;
-  /* 타이머: 연속 정답에 따라 4 → 3.5 → 3 → 2.5 → 최소 2초. 답이 세 자리면 +1초, 같은 문제 시간초과 2회부터 +2초 */
+  /* 타이머: 연속 정답에 따라 4 → 3.5 → 3 → 2.5 → 최소 2초. 답이 세 자리면 +1초,
+     연속으로 두 번 시간을 넘기면 +2초.
+     +2초를 문제 단위가 아니라 전투 단위(toStreak)로 세는 이유: 시간을 넘기면 문제가
+     새로 바뀌므로 "같은 문제에서 두 번"이라는 조건은 영영 성립하지 않는다. */
   function baseTime(){
     var t=B.streak>=8?2000:(B.streak>=6?2500:(B.streak>=4?3000:(B.streak>=2?3500:4000)));
     if(B.prob&&B.prob.ans>=100)t+=1000;
-    if(B.toCount>=2)t+=2000;
+    if(B.toStreak>=2)t+=2000;
     return t;
   }
   function stopTimer(){if(timerId){clearInterval(timerId);timerId=null;}}
@@ -537,23 +540,28 @@ if(typeof document!=='undefined'){(function(){
       fill.className=left<B.tTotal*.35?'hurry':'';
     },80);
   }
+  /* 시간 초과. 체력은 깎지 않고 **문제를 새로 낸다.**
+     같은 문제를 그대로 두면 시간 제한이 사실상 없어진다 — 못 푼 채로 시간만 계속 더 받는다.
+     못 푼 문제는 오답 풀에 넣어 뒤에 복습 문제로 다시 만난다. */
   function onTimeout(){
     if(!B||B.busy)return;
-    B.streak=0; B.toCount++;
-    var a=ANIMALS[B.stage-1];
-    if(!S.stats[B.prob.t])S.stats[B.prob.t]={a:0,c:0,to:0};
-    S.stats[B.prob.t].to=(S.stats[B.prob.t].to||0)+1; save();
-    $('b-msg').textContent='앗, 시간 초과! '+a.n+'가 피했어. 다시!';
-    if(B.toCount>=2){var h=$('q-hint');h.textContent=HINTS[B.prob.t]||HINTS.DEF;h.style.display='block';}
+    B.streak=0; B.toStreak++;
+    var a=ANIMALS[B.stage-1], p=B.prob;
+    if(!S.stats[p.t])S.stats[p.t]={a:0,c:0,to:0};
+    S.stats[p.t].to=(S.stats[p.t].to||0)+1;
+    S.wrongPool.push({t:p.t,a:p.a,b:p.b,op:p.op});
+    if(S.wrongPool.length>30)S.wrongPool.shift();
+    save();
     var ff=$('foe-face'); ff.classList.remove('dodge'); void ff.offsetWidth; ff.classList.add('dodge');
     beep(330,.1); beep(240,.14,.08);
-    B.input=''; renderInput(); updateBars();
-    startTimer();
+    updateBars();
+    nextProblem();
+    $('b-msg').textContent='앗, 시간 초과! '+a.n+'가 피했어. 새 문제야!';
   }
   function startBattle(stage){
     dailyCheck();
     var a=ANIMALS[stage-1];
-    B={stage:stage,isReplay:stage<=S.cleared,foeMax:foeMaxHP(stage,!!a.boss),meHP:ME_MAX,streak:0,busy:false,corrects:0,wrongTotal:0};
+    B={stage:stage,isReplay:stage<=S.cleared,foeMax:foeMaxHP(stage,!!a.boss),meHP:ME_MAX,streak:0,toStreak:0,busy:false,corrects:0,wrongTotal:0};
     B.foeHP=B.foeMax;
     var pf=petForm();
     $('me-face').textContent=pf.f; $('me-name').textContent=pf.n;
@@ -573,9 +581,12 @@ if(typeof document!=='undefined'){(function(){
   }
   function nextProblem(){
     B.prob=makeProblem(B.stage,S.wrongPool);
-    B.misses=0; B.toCount=0; B.input='';
+    B.misses=0; B.input='';
     $('q-body').textContent=B.prob.a+' '+B.prob.op+' '+B.prob.b;
-    $('q-hint').style.display='none';
+    /* 연달아 시간을 넘기고 있으면 새 문제에도 힌트를 남긴다 — 힌트는 유형별이라 그대로 통한다 */
+    var h=$('q-hint');
+    if(B.toStreak>=2){h.textContent=HINTS[B.prob.t]||HINTS.DEF;h.style.display='block';}
+    else h.style.display='none';
     if(B.prob.review){$('b-msg').textContent='⭐ 복습 문제! 지난번에 틀렸던 거야';}
     renderInput();
     startTimer();
@@ -608,6 +619,7 @@ if(typeof document!=='undefined'){(function(){
     stopTimer();
     if(given===p.ans){
       statAdd(p.t,true);
+      B.toStreak=0;
       S.xp+=1;
       /* 크리티컬: 3연속 정답 또는 남은 시간 절반 이상(스피드) */
       var streakCrit=B.streak>=2;
@@ -752,7 +764,7 @@ if(typeof document!=='undefined'){(function(){
       html+='<span class="num">'+w.q+' → '+w.given+' (정답 '+w.ans+')</span>';
     }
     html+='</div><div style="margin-top:16px;background:#fff;border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px"><span>🐷 저금통 <b class="num">'+S.coins+'원</b></span><button class="x" id="btn-payout">용돈 지급 완료</button></div>';
-    html+='<p class="note">· 틀린 문제는 다음 배틀에 "복습 문제"로 다시 나옵니다.<br>· 정답률 80% 이상 초록, 60% 미만 빨강.<br>· 타이머: 기본 4초, 연속 정답이 쌓이면 3.5→3→2.5→최소 2초 (시간 초과는 데미지 없이 재도전, 오답만 피격).<br>· 보스는 구역 4판을 전부 별 3개로 깨야 열리고, 보스전도 무실수(별 3개)로 이겨야 친구 구출.<br>· 시간초과가 많고 오답이 적으면 "알지만 느린" 상태 — 유창성 연습 단계입니다.<br>· 용돈: 승리 +1원(보스 +5원, 재도전 0원), 일일 퀘스트 20+20원, 주간 15승 30원 — 매일 다 하면 주당 약 300~330원.<br>· 용돈을 지급하셨으면 "용돈 지급 완료"를 눌러 0원으로 초기화하세요 (두 번 눌러 확인).</p>';
+    html+='<p class="note">· 틀린 문제는 다음 배틀에 "복습 문제"로 다시 나옵니다.<br>· 정답률 80% 이상 초록, 60% 미만 빨강.<br>· 타이머: 기본 4초, 연속 정답이 쌓이면 3.5→3→2.5→최소 2초 (시간 초과는 데미지가 없지만 문제가 새로 바뀝니다. 못 푼 문제는 복습으로 다시 나옵니다. 체력이 깎이는 것은 오답일 때뿐입니다).<br>· 보스는 구역 4판을 전부 별 3개로 깨야 열리고, 보스전도 무실수(별 3개)로 이겨야 친구 구출.<br>· 시간초과가 많고 오답이 적으면 "알지만 느린" 상태 — 유창성 연습 단계입니다.<br>· 용돈: 승리 +1원(보스 +5원, 재도전 0원), 일일 퀘스트 20+20원, 주간 15승 30원 — 매일 다 하면 주당 약 300~330원.<br>· 용돈을 지급하셨으면 "용돈 지급 완료"를 눌러 0원으로 초기화하세요 (두 번 눌러 확인).</p>';
     $('p-body').innerHTML=html;
     var pb=$('btn-payout'), armed=false, armT=null;
     pb.addEventListener('click',function(){
