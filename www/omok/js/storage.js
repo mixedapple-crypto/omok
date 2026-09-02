@@ -9,9 +9,15 @@ const DEFAULTS = Object.freeze({
   instant: false,
   level: 'normal',
   first: 'me',
+  /** 실전 코치. 결정적 순간에 즉시 끼어들어 무르기를 제안한다(사용자 결정). */
+  coach: true,
   win: 0,
   loss: 0,
   draw: 0,
+  /** 오목 교실 진행. { [lessonId]: { demo, puzzle, practice } } — 각 항목 true면 별 하나. */
+  lessons: {},
+  /** 실전에서 성공한 기술 횟수. { '33': n, '43': n, '44': n } — 배지의 근거. */
+  skills: {},
 });
 
 let state = { ...DEFAULTS };
@@ -44,4 +50,27 @@ export function addResult(kind) {
 
 export function resetRecord() {
   return save({ win: 0, loss: 0, draw: 0 });
+}
+
+/** 레슨 진행 한 칸을 켠다. part는 'demo' | 'puzzle' | 'practice'. 이미 켜져 있으면 그대로다. */
+export function markLesson(id, part) {
+  const cur = state.lessons?.[id] ?? {};
+  if (cur[part]) return state;
+  return save({ lessons: { ...state.lessons, [id]: { ...cur, [part]: true } } });
+}
+
+export function lessonStars(id) {
+  const cur = state.lessons?.[id] ?? {};
+  return ['demo', 'puzzle', 'practice'].filter((k) => cur[k]).length;
+}
+
+/** 실전 기술 성공 횟수를 하나 올린다. @returns 올린 뒤 횟수 */
+export function addSkill(key) {
+  const n = (state.skills?.[key] || 0) + 1;
+  save({ skills: { ...state.skills, [key]: n } });
+  return n;
+}
+
+export function resetLessons() {
+  return save({ lessons: {}, skills: {} });
 }

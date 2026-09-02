@@ -47,7 +47,17 @@ node tests/patterns.test.js 2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-pa
 node tests/ai.test.js       2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-ai-result.txt
 node tests/render.test.js   2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-render-result.txt
 node tests/wiring.test.js   2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-wiring-result.txt
+node tests/tactics.test.js  2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-tactics-result.txt
+node tests/puzzle.test.js   2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-puzzle-result.txt
+node tests/lessons.test.js  2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-lessons-result.txt
+node tests/coach.test.js    2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-coach-result.txt
+node tests/omok-doc-sync.test.js 2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-omok-doc-sync-result.txt
+node tests/flow.test.js     2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-flow-result.txt
 ```
+
+`flow.test.js`는 가짜 DOM(`tests/_dom-stub.js`) 위에서 **game.js·lesson-flow.js·ui.js를 통째로 구동**한다.
+메뉴 → 교실 → 시범 → 퍼즐(오답·정답·마무리) → 써보기 → 혼자 하기에서 코치 개입·무르기·승리까지 실제 핸들러로 누른다.
+Chrome 확장이 없을 때 L3의 11~15번 항목을 이것으로 대신할 수 있다. 다만 **보이는 것**(겹층이 실제로 그려지는가, 시트가 판을 가리지 않는가, 아이패드 배치)은 여전히 L3·L4의 몫이다.
 
 ⚠️ `Tee-Object`에 `Select-Object -First N`을 이어 붙이지 말 것 — 파이프가 끊겨 결과 파일이 잘린 채 저장된다(실측된 함정). 파일로 받은 뒤 따로 읽는다.
 
@@ -60,6 +70,13 @@ node tests/wiring.test.js   2>&1 | Out-File -Encoding utf8 _workspace/runs/L1-wi
 - render: **DPR 1·2·3·4에서 터치 판정 동일**(그리기 좌표계와 터치 좌표계가 섞이면 여기서 걸린다) · 225 교차점 왕복
 - wiring: HTML의 모든 `data-action`에 핸들러가 있고, `ui.js`가 찾는 id가 전부 존재하는가.
   **버튼이 아무 반응도 안 하는 종류의 결함은 브라우저 없이 문자열 대조만으로 잡힌다** — L3을 못 할 때 특히 중요하다.
+  game.js에서 import로 닿는 모듈이 전부 오목 워커 캐시 목록에 있는가(정적 import 하나가 빠지면 오프라인에서 게임 전체가 안 뜬다).
+- tactics: 띈삼도 삼 · 가장자리에 붙은 삼은 삼이 아님 · 쌍삼/사삼/사사 구분 · **막는 자리 열거**(붙은 삼은 바로 옆 둘, 띈삼은 가운데+양끝 셋) · 연속 사 깊이
+- puzzle: 레슨마다 시드 고정 40판이 **전부 풀리고 정답 열거가 완전**(정답 아닌 빈칸에 기술이 성립하지 않음) · 마무리 퍼즐은 정답만 두면 반드시 이김 · 방해돌이 실제로 들어감
+- lessons: 모든 시범의 `expect`가 그 자리에서 엔진으로 성립 · 견본이 대칭 8가지 × 위치 2에서 전부 건전(레슨 9는 깊이 2로 못 이겨야 함)
+- coach: 다섯 놓침·상대 사 안 막음·사삼 놓침·연속 사 놓침·삼 안 막음에 끼어들고, 이기는 수·못 막는 상황·되받아치는 사에는 조용
+- omok-doc-sync: 지침서의 레슨 표·별 규칙·힌트 횟수·코치 규칙 표·배지 표·상수 이름이 코드와 일치
+- flow: 배우기 → 카드 → 시범 다음/이전 → 퍼즐 오답 말풍선(bad)·정답 말풍선(good)·마무리 퍼즐이 다섯으로 끝남 → 별 둘 → 써보기가 게임 화면 → 혼자 하기에서 **코치가 AI보다 먼저** 끼어들고 무르기가 내 돌 하나만 거두며 다섯을 두면 결과 카드
 
 **FAIL이 1건이라도 있으면 출력 원문을 그대로 인용해 보고하고 여기서 중단한다.** L2로 넘어가지 않는다.
 
@@ -107,6 +124,11 @@ node tests/ai-selfplay.js --games 8 --time 300 2>&1 | Out-File -Encoding utf8 _w
 | 8 | 가장자리 착수 | 0행/14열에 정확히 놓이는가 (좌표 변환 반 칸 밀림 검출) |
 | 9 | **가로 모드** | 판과 버튼이 화면 밖으로 나가지 않는가 |
 | 10 | 효과음 | 첫 터치 후 소리가 나는가 (`audioCtx.resume()` 누락은 **에러 없이 조용히 무음**이라 실측으로만 잡힌다) |
+| 11 | 오목 교실 · 보기 | 배우기 → 레슨 카드 → 시범이 "다음"으로 넘어가고 돌 번호·줄 강조·물음표가 보이는가. "이전"으로 되돌아가는가 |
+| 12 | 오목 교실 · 찾기 | 퍼즐에서 오답 시 빨간 X와 설명 말풍선, 정답 시 초록 말풍선과 줄 강조. 마무리 퍼즐(쌍삼 등)은 상대 응수 뒤 계속 둘 수 있고 다섯에서 끝나는가. 5문제 뒤 결과와 별 |
+| 13 | 오목 교실 · 써보기 | "써보기 시작!"이 게임 화면으로 가고, 결과 카드에 "교실로" 버튼이 있으며, 이기면 별이 켜지는가 |
+| 14 | 코치 | 혼자 하기(코치 켬)에서 상대 사를 안 막으면 **AI가 두기 전에** 아래쪽 시트가 뜨고 초록 자리가 표시되는가. 무르기 → 돌이 거둬지고 내 차례, 그냥 둘래요 → AI가 두는가 |
+| 15 | 배지 | 실전에서 쌍삼을 두면 "쌍삼!" 토스트가 뜨고 교실 화면의 배지에 횟수가 오르는가 |
 
 콘솔 에러도 함께 수집해 `_workspace/runs/L3-console.txt`로 남긴다.
 

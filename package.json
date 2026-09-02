@@ -5,7 +5,7 @@
   "description": "광고 없는 오목 게임 — 1인 대전(AI 3단계)/2인 대전, 자유룰",
   "type": "module",
   "scripts": {
-    "test": "node tests/board.test.js && node tests/patterns.test.js && node tests/ai.test.js && node tests/render.test.js && node tests/wiring.test.js && node tests/math-level.test.js && node tests/math-doc-sync.test.js",
+    "test": "node tests/board.test.js && node tests/patterns.test.js && node tests/ai.test.js && node tests/render.test.js && node tests/wiring.test.js && node tests/tactics.test.js && node tests/puzzle.test.js && node tests/lessons.test.js && node tests/coach.test.js && node tests/omok-doc-sync.test.js && node tests/flow.test.js && node tests/math-level.test.js && node tests/math-doc-sync.test.js",
     "selfplay": "node tests/ai-selfplay.js",
     "serve": "node serve.js"
   }

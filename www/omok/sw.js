@@ -30,6 +30,12 @@ const ASSETS = [
   './js/audio.js',
   './js/storage.js',
   './js/ui.js',
+  // 오목 교실·코치. game.js가 정적으로 import하므로 빠지면 오프라인에서 게임 전체가 안 뜬다.
+  './js/tactics.js',
+  './js/puzzle.js',
+  './js/lessons.js',
+  './js/coach.js',
+  './js/lesson-flow.js',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',

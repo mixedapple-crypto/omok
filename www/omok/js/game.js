@@ -8,6 +8,9 @@ import { Renderer } from './render.js';
 import * as ui from './ui.js';
 import * as store from './storage.js';
 import * as audio from './audio.js';
+import * as lessonFlow from './lesson-flow.js';
+import * as coach from './coach.js';
+import { BADGE_SKILLS, SKILL_NAME, skillsOfMove } from './tactics.js';
 
 /** 실제 대국에서 어려움 난이도가 쓰는 사고 시간. 사람이 기다려줄 수 있는 상한이다. */
 const AI_TIME_MS = 1500;
@@ -27,6 +30,10 @@ let thinking = false;
 /** 판이 바뀌면 증가. 사고 중이던 AI의 응답이 새 판에 끼어드는 것을 막는다. */
 let generation = 0;
 let pulseId = 0;
+/** 오목 교실의 써보기 판이면 그 레슨 id. 코치가 강제로 켜지고, 끝나면 별을 준다. */
+let practiceLesson = null;
+/** 코치가 끼어든 상태. 아이가 무르기/그냥 둘래요를 고를 때까지 AI는 두지 않는다. */
+let coachPending = null;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -85,8 +92,21 @@ async function requestMove(cells, color) {
 
 // ── 그리기 ────────────────────────────────────────────────────────────────
 
+const COACH_MY_LINE = 'rgba(255,183,3,.75)';
+const COACH_OPP_LINE = 'rgba(229,87,63,.75)';
+
 function render(t = 0) {
-  renderer.draw(board, { preview, lastMove: board.lastMove, winLine: board.winLine, t });
+  const f = coachPending;
+  renderer.draw(board, {
+    preview, lastMove: board.lastMove, winLine: board.winLine, t,
+    // 코치가 끼어들면 뒀어야 할 자리(초록)와 그 모양(내 것은 노랑, 상대 위협은 빨강)을 얹는다.
+    marks: f ? f.spots.map((i) => ({ i, kind: 'good' })) : null,
+    lines: f ? f.lines.map((cells) => ({ cells, color: f.kind.startsWith('block') ? COACH_OPP_LINE : COACH_MY_LINE })) : null,
+  });
+}
+
+function coachEnabled() {
+  return mode === 'solo' && (practiceLesson !== null || !!store.get().coach);
 }
 
 /** 이긴 줄을 깜빡이게 한다. 승리 표시가 없을 때는 rAF를 돌리지 않는다(배터리). */
@@ -114,7 +134,7 @@ function turnLabel() {
 }
 
 function canUndo() {
-  if (thinking || board.isOver) return false;
+  if (thinking || board.isOver || coachPending) return false;
   if (mode === 'duo') return board.moveCount > 0;
   return canUndoOwn(board, humanColor);
 }
@@ -132,6 +152,8 @@ function newGame() {
   board.reset();
   preview = -1;
   thinking = false;
+  coachPending = null;
+  ui.hideCoach();
   stopPulse();
   ui.hideResult();
   ui.setScreen('game');
@@ -148,10 +170,32 @@ function vibrate(ms) {
 }
 
 function commit(i) {
+  // 아이의 수라면 두기 **전에** 판정한다 — 기술 배지와 코치 분석은 빈칸 기준이다.
+  const mine = mode === 'solo' && board.turn === humanColor;
+  const label = mine ? skillsOfMove(board.cells, i, humanColor).label : null;
+  const finding = mine && coachEnabled()
+    ? coach.judge(coach.analyzeTurn(board.cells, humanColor), board.cells, humanColor, i)
+    : null;
+
   if (!board.place(i)) { audio.nope(); return; }
   preview = -1;
   audio.stone();
   vibrate(12);
+
+  // 실전 배지 — 퍼즐과 같은 판정(tactics.js)이라 "퍼즐에선 쌍삼인데 실전에선 아니다"가 없다.
+  if (label && BADGE_SKILLS.includes(label)) {
+    store.addSkill(label);
+    ui.toast(`${SKILL_NAME[label].ko}!`);
+  }
+
+  // 코치가 끼어들면 AI는 기다린다. 아이가 무르기/그냥 둘래요를 고르면 그때 이어간다.
+  if (finding && !board.isOver) {
+    coachPending = finding;
+    render();
+    updateHud();
+    ui.showCoach(finding.text);
+    return;
+  }
   afterMove();
 }
 
@@ -229,6 +273,13 @@ function endGame() {
     audio.lose();
   }
 
+  // 써보기 판이면 교실에 결과를 돌려주고(이기면 별), 결과 카드에 "교실로" 버튼을 보인다.
+  if (practiceLesson !== null) {
+    lessonFlow.onPracticeResult(practiceLesson, w === humanColor);
+    if (w === humanColor) text = '이겼다! 별 획득!';
+  }
+  ui.setResultLessons(practiceLesson !== null);
+
   ui.setRecord(store.get());
   updateHud();
   // 이긴 줄이 보이도록 잠깐 두고 결과를 띄운다.
@@ -249,7 +300,7 @@ function undo() {
 // ── 입력 ──────────────────────────────────────────────────────────────────
 
 function onBoardPointer(e) {
-  if (thinking || board.isOver) return;
+  if (thinking || board.isOver || coachPending) return;
   if (mode === 'solo' && board.turn !== humanColor) return;
 
   const i = renderer.hitTest(e.clientX, e.clientY);
@@ -268,10 +319,30 @@ function onBoardPointer(e) {
 
 function startSolo() {
   mode = 'solo';
+  practiceLesson = null;
   const s = store.get();
   level = s.level;
   humanColor = s.first === 'me' ? BLACK : WHITE;
   newGame();
+}
+
+/** 오목 교실의 써보기 — 레슨이 정한 난이도로, 아이는 검은 돌, 코치는 강제로 켠다. */
+function startPractice(lesson) {
+  mode = 'solo';
+  practiceLesson = lesson.id;
+  level = lesson.practice.level;
+  humanColor = BLACK;
+  newGame();
+}
+
+/** 게임 화면을 떠날 때의 공통 정리. 사고 중인 AI 응답을 무효화하고 겹층을 걷는다. */
+function leaveGame() {
+  generation++;
+  thinking = false;
+  coachPending = null;
+  ui.hideCoach();
+  stopPulse();
+  ui.hideResult();
 }
 
 const ACTIONS = {
@@ -279,15 +350,14 @@ const ACTIONS = {
     const s = store.get();
     ui.selectChip('#level-choice', 'level', s.level);
     ui.selectChip('#first-choice', 'first', s.first);
+    ui.selectChip('#coach-choice', 'coach', s.coach ? 'on' : 'off');
     ui.setScreen('solo');
   },
-  duo: () => { mode = 'duo'; newGame(); },
+  duo: () => { mode = 'duo'; practiceLesson = null; newGame(); },
   'start-solo': startSolo,
   'back-menu': () => {
-    generation++; // 사고 중인 AI 응답 무효화
-    thinking = false;
-    stopPulse();
-    ui.hideResult();
+    leaveGame();
+    practiceLesson = null;
     ui.setRecord(store.get());
     ui.setScreen('menu');
   },
@@ -297,6 +367,30 @@ const ACTIONS = {
   settings: () => { ui.syncSettings(store.get()); ui.toggleSettings(true); },
   'close-settings': () => ui.toggleSettings(false),
   'reset-record': () => { store.resetRecord(); ui.setRecord(store.get()); },
+  'reset-lessons': () => { store.resetLessons(); },
+  // 오목 교실
+  lessons: () => { leaveGame(); lessonFlow.openList(); },
+  'back-lessons': () => { leaveGame(); practiceLesson = null; lessonFlow.openList(); },
+  'lesson-prev': () => lessonFlow.prev(),
+  'lesson-next': () => lessonFlow.next(),
+  'lesson-place': () => lessonFlow.place(),
+  'lesson-hint': () => lessonFlow.hint(),
+  // 코치
+  'coach-undo': () => {
+    if (!coachPending) return;
+    coachPending = null;
+    ui.hideCoach();
+    board.undo(); // AI는 아직 안 뒀으므로 마지막 수가 아이의 수다
+    preview = -1;
+    render();
+    updateHud();
+  },
+  'coach-keep': () => {
+    if (!coachPending) return;
+    coachPending = null;
+    ui.hideCoach();
+    afterMove();
+  },
 };
 
 function init() {
@@ -321,6 +415,13 @@ function init() {
     store.save({ first: v });
     ui.selectChip('#first-choice', 'first', v);
   });
+  ui.selectChip('#coach-choice', 'coach', s.coach ? 'on' : 'off');
+  ui.onChip('#coach-choice', 'coach', (v) => {
+    store.save({ coach: v === 'on' });
+    ui.selectChip('#coach-choice', 'coach', v);
+  });
+
+  lessonFlow.init({ canvas: document.getElementById('lesson-board'), onPractice: startPractice });
   ui.onSettingChange((key, value) => {
     store.save({ [key]: value });
     if (key === 'sound') { audio.setEnabled(value); if (value) audio.unlock(); }
@@ -373,3 +474,8 @@ function registerServiceWorker() {
 }
 
 init();
+
+/** 테스트 전용 — 가짜 DOM 위에서 흐름을 구동하는 tests/flow.test.js 가 판과 상태를 들여다본다. */
+export function _peek() {
+  return { board, mode, level, humanColor, practiceLesson, coachPending, thinking };
+}

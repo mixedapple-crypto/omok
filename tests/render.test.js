@@ -182,6 +182,13 @@ const SIZE_PX = 360;
     r.draw(b, { preview: -1, lastMove: -1, winLine: [idx(0, 0), idx(0, 4)], t: 500 });
     r.draw(b, {});
     r.draw(b, null);
+    // 오목 교실·코치가 얹는 겹층 — 좌표계는 그대로고 그리기만 더한다.
+    r.draw(b, {
+      lines: [[idx(7, 7), idx(7, 11)], { cells: [idx(2, 2), idx(6, 6)], color: 'red' }, [], { cells: null }],
+      marks: [{ i: idx(3, 3), kind: 'ask' }, { i: idx(4, 4), kind: 'good' }, { i: idx(5, 5), kind: 'bad' }, { i: idx(6, 6), kind: 'hint' }],
+      numbers: { [idx(7, 7)]: 1, [idx(7, 8)]: 2, [idx(0, 0)]: 3 },
+      preview: idx(9, 9), previewColor: 2,
+    });
   } catch (e) { threw = e; }
   ok('draw가 예외를 던지지 않는다', threw === null, threw ? String(threw) : '');
 }

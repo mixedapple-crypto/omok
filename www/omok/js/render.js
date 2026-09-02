@@ -95,12 +95,20 @@ export class Renderer {
 
   /**
    * @param {import('./board.js').Board} board
-   * @param {{preview:number, lastMove:number, winLine:number[]|null, t:number}} view
+   * @param {{preview:number, lastMove:number, winLine:number[]|null, t:number,
+   *          lines?:Array<number[]|{cells:number[], color?:string}>,
+   *          marks?:Array<{i:number, kind:'ask'|'good'|'bad'|'hint'}>,
+   *          numbers?:Record<number, number>, previewColor?:number}} view
    *   t는 애니메이션용 경과 시간(ms).
+   *   lines·marks·numbers는 오목 교실과 코치가 쓰는 **겹층**이다 — 좌표계는 그대로고 그리기만 얹는다.
+   *   previewColor는 퍼즐에서 차례와 무관하게 아이 돌 색으로 미리보기를 그릴 때 쓴다.
    */
   draw(board, view) {
     const { ctx, css, cell } = this;
-    const { preview = -1, lastMove = -1, winLine = null, t = 0 } = view || {};
+    const {
+      preview = -1, lastMove = -1, winLine = null, t = 0,
+      lines = null, marks = null, numbers = null, previewColor = 0,
+    } = view || {};
 
     // 반상
     const g = ctx.createLinearGradient(0, 0, css, css);
@@ -150,6 +158,15 @@ export class Renderer {
       if (v !== 0) this._stone(this.x(colOf(i)), this.y(rowOf(i)), v, 1);
     }
 
+    // 줄 강조 겹층 — 시범·퍼즐·코치가 모양을 비출 때. winLine과 같은 방식으로 양 끝을 잇는다.
+    if (lines && lines.length) {
+      for (const ln of lines) {
+        const cells = Array.isArray(ln) ? ln : ln.cells;
+        if (!cells || !cells.length) continue;
+        this._line(cells[0], cells[cells.length - 1], (Array.isArray(ln) ? null : ln.color) || 'rgba(255,183,3,.7)', cell * 0.26);
+      }
+    }
+
     // 마지막 착수 표시
     if (lastMove >= 0 && board.cells[lastMove] !== 0) {
       ctx.strokeStyle = '#e5573f';
@@ -174,10 +191,84 @@ export class Renderer {
       ctx.lineCap = 'butt';
     }
 
+    // 착수 번호 — 시범에서 순서를 보여줄 때
+    if (numbers) {
+      ctx.font = `700 ${Math.round(cell * 0.46)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const key of Object.keys(numbers)) {
+        const i = Number(key);
+        const v = board.cells[i];
+        if (!v) continue;
+        ctx.fillStyle = v === BLACK ? '#fdf6e8' : '#1a1a1a';
+        ctx.fillText(String(numbers[key]), this.x(colOf(i)), this.y(rowOf(i)) + cell * 0.02);
+      }
+    }
+
+    // 표식 겹층 — 물음표(ask)·정답(good)·오답(bad)·힌트(hint)
+    if (marks && marks.length) {
+      for (const m of marks) this._mark(m.i, m.kind);
+    }
+
     // 미리보기 돌 — 반투명이라 확정 전임이 한눈에 보인다
     if (preview >= 0 && board.cells[preview] === 0) {
-      this._stone(this.x(colOf(preview)), this.y(rowOf(preview)), board.turn, 0.55);
+      this._stone(this.x(colOf(preview)), this.y(rowOf(preview)), previewColor || board.turn, 0.55);
     }
+  }
+
+  _line(a, b, color, width) {
+    const { ctx } = this;
+    ctx.strokeStyle = color;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(this.x(colOf(a)), this.y(rowOf(a)));
+    ctx.lineTo(this.x(colOf(b)), this.y(rowOf(b)));
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  _mark(i, kind) {
+    const { ctx, cell } = this;
+    const cx = this.x(colOf(i));
+    const cy = this.y(rowOf(i));
+    const r = cell * 0.34;
+    ctx.save();
+    if (kind === 'ask') {
+      ctx.fillStyle = 'rgba(255,183,3,.92)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#3a2400';
+      ctx.font = `700 ${Math.round(cell * 0.5)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', cx, cy + cell * 0.03);
+    } else if (kind === 'good') {
+      ctx.strokeStyle = '#80ed99';
+      ctx.lineWidth = Math.max(2, cell * 0.11);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (kind === 'bad') {
+      ctx.strokeStyle = '#e5573f';
+      ctx.lineWidth = Math.max(2, cell * 0.11);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.7, cy - r * 0.7);
+      ctx.lineTo(cx + r * 0.7, cy + r * 0.7);
+      ctx.moveTo(cx + r * 0.7, cy - r * 0.7);
+      ctx.lineTo(cx - r * 0.7, cy + r * 0.7);
+      ctx.stroke();
+    } else {
+      // hint: 노란 고리
+      ctx.strokeStyle = 'rgba(255,183,3,.95)';
+      ctx.lineWidth = Math.max(2, cell * 0.09);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   _stone(cx, cy, color, alpha) {

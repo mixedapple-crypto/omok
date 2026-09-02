@@ -64,6 +64,25 @@ for (const sel of uniq(all(gameJs, /selectChip\('#([^']+)'/g))) {
   const firsts = uniq(all(html, /data-first="([^"]+)"/g));
   eq('선공 선택지는 2개', firsts.length, 2);
   for (const v of ['me', 'ai']) ok(`선공 '${v}' 칩이 있다`, firsts.includes(v));
+  const coaches = uniq(all(html, /data-coach="([^"]+)"/g));
+  eq('코치 선택지는 2개', coaches.length, 2);
+  for (const v of ['on', 'off']) ok(`코치 '${v}' 칩이 있다`, coaches.includes(v));
+}
+
+// --- 오목 교실 배선 ---------------------------------------------------------------
+{
+  const flowJs = read('www/omok/js/lesson-flow.js');
+  // 레슨 카드는 data-action이 아니라 data-lesson으로 연다. ui.onLesson이 그 위임을 건다.
+  ok('레슨 목록 컨테이너가 있다', htmlIds.includes('lesson-list'));
+  ok('ui.js가 레슨 카드 클릭을 위임한다', /data-lesson|\[data-lesson\]/.test(uiJs));
+  ok('lesson-flow가 레슨 열기를 건다', /ui\.onLesson\(/.test(flowJs));
+  // 교실 캔버스는 게임 캔버스와 별개다 — 두 화면이 한 캔버스를 나눠 쓰면 리사이즈가 얽힌다.
+  ok('교실 캔버스가 있다', htmlIds.includes('lesson-board'));
+  ok('game.js가 교실 캔버스를 lesson-flow에 넘긴다', /getElementById\('lesson-board'\)/.test(gameJs));
+  // 코치 시트의 두 버튼이 모두 배선돼 있어야 아이가 시트에 갇히지 않는다.
+  for (const a of ['coach-undo', 'coach-keep', 'back-lessons']) {
+    ok(`코치·교실 버튼 '${a}' 이 HTML에 있다`, htmlActions.includes(a));
+  }
 }
 
 // --- HTML이 참조하는 파일이 실제로 있는가 ----------------------------------------
@@ -74,7 +93,9 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
 // --- 화면 이름이 CSS와 맞는가 ----------------------------------------------------
 {
   const css = read('www/omok/css/style.css');
-  const screens = uniq(all(gameJs, /setScreen\('([^']+)'\)/g));
+  const flowJs = read('www/omok/js/lesson-flow.js');
+  const screens = uniq([...all(gameJs, /setScreen\('([^']+)'\)/g), ...all(flowJs, /setScreen\('([^']+)'\)/g)]);
+  ok('화면이 다섯(메뉴·설정·게임·교실 목록·레슨)', screens.length >= 5, screens.join(', '));
   for (const s of screens) {
     ok(`화면 '${s}' 을 보여주는 CSS 규칙이 있다`,
       css.includes(`[data-screen="${s}"]`), '이 화면은 영원히 안 보인다');
@@ -84,7 +105,7 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
 // --- 저장 키가 설정 UI와 맞는가 ---------------------------------------------------
 {
   const storage = read('www/omok/js/storage.js');
-  for (const key of ['sound', 'vibrate', 'instant', 'level', 'first']) {
+  for (const key of ['sound', 'vibrate', 'instant', 'level', 'first', 'coach', 'lessons', 'skills']) {
     ok(`설정 키 '${key}' 가 저장 기본값에 있다`, new RegExp(`^\\s+${key}:`, 'm').test(storage));
   }
   // ui.js의 체크박스 id와 onSettingChange가 넘기는 키가 어긋나면 설정이 저장 안 된다.
@@ -195,12 +216,23 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
   const cached = all(sw, /'(\.\/[^']*)'/g);
   const needed = [
     './index.html', './manifest.webmanifest', './css/style.css',
-    './js/game.js', './js/board.js', './js/patterns.js', './js/render.js',
-    './js/audio.js', './js/storage.js', './js/ui.js',
     // 이 둘은 HTML이 참조하지 않고 실행 중에 따로 요청된다. 빠뜨리면
     // 오프라인에서 워커와 폴백이 **동시에** 죽어 "생각하는 중…"에서 멈춘다.
     './js/ai.js', './js/ai-worker.js',
   ];
+  // game.js에서 import로 닿는 모듈 전부 — 목록을 손으로 적으면 모듈을 하나 더할 때 반드시 빠뜨린다.
+  // 정적 import는 하나라도 없으면 **게임 전체**가 안 뜨므로 파일 하나 빠지는 것과 무게가 다르다.
+  {
+    const seen = new Set();
+    const queue = ['game.js'];
+    while (queue.length) {
+      const f = queue.pop();
+      if (seen.has(f)) continue;
+      seen.add(f);
+      for (const dep of all(read(`www/omok/js/${f}`), /from\s+'\.\/([^']+)'/g)) queue.push(dep);
+    }
+    for (const f of seen) needed.push(`./js/${f}`);
+  }
   for (const f of needed) {
     ok(`캐시 목록에 있다: ${f}`, cached.includes(f));
   }

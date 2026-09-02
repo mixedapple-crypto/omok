@@ -32,6 +32,7 @@
     <div class="menu-buttons">
       <button class="btn btn-big" data-action="solo">혼자 하기</button>
       <button class="btn btn-big" data-action="duo">둘이 하기</button>
+      <button class="btn btn-big btn-learn" data-action="lessons">배우기<small>오목 교실 · 쌍삼 사삼 배우기</small></button>
       <button class="btn btn-ghost" data-action="settings">설정</button>
     </div>
 
@@ -46,7 +47,7 @@
       <legend>얼마나 세게 할까요?</legend>
       <div class="choice-row" id="level-choice">
         <button class="chip" data-level="easy">쉬움<small>3을 만들면 이겨요</small></button>
-        <button class="chip" data-level="normal">보통<small>가끔 실수해요</small></button>
+        <button class="chip" data-level="normal">보통<small>쌍삼을 배우면 이겨요</small></button>
         <button class="chip" data-level="hard">어려움<small>실수하지 않아요</small></button>
       </div>
     </fieldset>
@@ -56,6 +57,14 @@
       <div class="choice-row" id="first-choice">
         <button class="chip" data-first="me"><span class="dot black"></span>내가 먼저</button>
         <button class="chip" data-first="ai"><span class="dot white"></span>컴퓨터 먼저</button>
+      </div>
+    </fieldset>
+
+    <fieldset class="choice">
+      <legend>코치가 도와줄까요?</legend>
+      <div class="choice-row" id="coach-choice">
+        <button class="chip" data-coach="on">코치와 함께<small>놓친 수를 알려줘요</small></button>
+        <button class="chip" data-coach="off">혼자서<small>아무 말도 안 해요</small></button>
       </div>
     </fieldset>
 
@@ -86,6 +95,48 @@
     </footer>
   </section>
 
+  <!-- ── 오목 교실: 레슨 목록 ────────────────────────────────────── -->
+  <section class="screen screen-lessons">
+    <header class="hud">
+      <h2 class="sub-title hud-title">오목 교실</h2>
+      <button class="btn-icon" data-action="back-menu" aria-label="메뉴로">✕</button>
+    </header>
+    <div class="lesson-scroll">
+      <div class="lesson-list" id="lesson-list"></div>
+      <h3 class="badge-title">내 배지</h3>
+      <div class="badge-list" id="badge-list"></div>
+      <p class="hint hint-center">실전(혼자 하기)에서 기술을 성공하면 배지가 생겨요</p>
+    </div>
+  </section>
+
+  <!-- ── 오목 교실: 레슨 진행 (보기 → 찾기 → 써보기) ────────────────── -->
+  <section class="screen screen-lesson">
+    <header class="hud">
+      <div class="lesson-head">
+        <span class="lesson-name" id="lesson-name">레슨</span>
+        <div class="lesson-steps" id="lesson-steps">
+          <span data-part="demo">보기</span>
+          <span data-part="puzzle">찾기</span>
+          <span data-part="practice">써보기</span>
+        </div>
+      </div>
+      <button class="btn-icon" data-action="back-lessons" aria-label="교실로">✕</button>
+    </header>
+
+    <div class="board-wrap">
+      <canvas id="lesson-board" aria-label="연습판"></canvas>
+    </div>
+
+    <p class="bubble" id="lesson-bubble"></p>
+
+    <footer class="controls">
+      <button class="btn btn-sub" data-action="lesson-prev" id="btn-lesson-prev">이전</button>
+      <button class="btn btn-sub" data-action="lesson-hint" id="btn-lesson-hint" hidden>힌트</button>
+      <button class="btn btn-place" data-action="lesson-place" id="btn-lesson-place" hidden disabled>여기 놓기</button>
+      <button class="btn btn-place" data-action="lesson-next" id="btn-lesson-next">다음</button>
+    </footer>
+  </section>
+
   <!-- ── 결과 ──────────────────────────────────────────────────── -->
   <div class="overlay" id="result-overlay" hidden>
     <div class="card">
@@ -93,7 +144,20 @@
       <h2 class="result-text" id="result-text">이겼다!</h2>
       <div class="menu-buttons">
         <button class="btn btn-big" data-action="restart">한 판 더</button>
+        <button class="btn btn-ghost" data-action="back-lessons" id="btn-result-lessons" hidden>교실로</button>
         <button class="btn btn-ghost" data-action="back-menu">메뉴로</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 코치 — 판이 보이도록 아래쪽 시트로 뜬다 ───────────────────── -->
+  <div class="sheet" id="coach-sheet" hidden>
+    <div class="sheet-card">
+      <p class="coach-text"><span class="coach-emoji">🧐</span> <span id="coach-text">잠깐!</span></p>
+      <p class="hint">초록 동그라미 자리를 보세요</p>
+      <div class="sheet-buttons">
+        <button class="btn btn-big" data-action="coach-undo">무르기</button>
+        <button class="btn btn-ghost" data-action="coach-keep">그냥 둘래요</button>
       </div>
     </div>
   </div>
@@ -109,10 +173,12 @@
       <div class="menu-buttons">
         <button class="btn btn-big" data-action="close-settings">닫기</button>
         <button class="btn btn-ghost" data-action="reset-record">전적 지우기</button>
+        <button class="btn btn-ghost" data-action="reset-lessons">교실 진행·배지 지우기</button>
       </div>
     </div>
   </div>
 
+  <div class="toast" id="toast" hidden></div>
   <div id="confetti" aria-hidden="true"></div>
 </div>
 

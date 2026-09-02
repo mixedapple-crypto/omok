@@ -14,6 +14,21 @@ const resultText = $('#result-text');
 const settingsOverlay = $('#settings-overlay');
 const recordEl = $('#record');
 const confettiBox = $('#confetti');
+// 오목 교실
+const lessonList = $('#lesson-list');
+const badgeList = $('#badge-list');
+const lessonName = $('#lesson-name');
+const lessonSteps = $('#lesson-steps');
+const bubble = $('#lesson-bubble');
+const btnLessonPrev = $('#btn-lesson-prev');
+const btnLessonNext = $('#btn-lesson-next');
+const btnLessonPlace = $('#btn-lesson-place');
+const btnLessonHint = $('#btn-lesson-hint');
+const btnResultLessons = $('#btn-result-lessons');
+// 코치·토스트
+const coachSheet = $('#coach-sheet');
+const coachText = $('#coach-text');
+const toastEl = $('#toast');
 
 export function setScreen(name) { app.dataset.screen = name; }
 export function getScreen() { return app.dataset.screen; }
@@ -103,4 +118,118 @@ export function confetti(count = 60) {
   confettiBox.appendChild(frag);
   // 3.6초면 가장 늦은 조각(지연 0.5s + 지속 3.0s)까지 화면 밖으로 나간다.
   setTimeout(() => { confettiBox.textContent = ''; }, 3600);
+}
+
+// ── 오목 교실 ─────────────────────────────────────────────────────────────
+
+function el(tag, className, text) {
+  const e = document.createElement(tag);
+  if (className) e.className = className;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+/** 이름표: 한글을 크게, 숫자 표기(3-3 등)를 작게 병기한다(사용자 결정). */
+function nameWithCode(parent, ko, code) {
+  parent.appendChild(document.createTextNode(ko));
+  if (code) parent.appendChild(el('small', '', code));
+}
+
+function starText(parent, n) {
+  for (let i = 0; i < 3; i++) parent.appendChild(el('span', i < n ? '' : 'off', '★'));
+}
+
+/**
+ * 레슨 카드 목록. 순서대로 번호를 붙이고 별을 보여준다. nextId는 다음에 추천하는 레슨.
+ * @param {Array} lessons  @param {(id:string)=>number} starsOf  @param {string|null} nextId
+ */
+export function renderLessons(lessons, starsOf, nextId) {
+  lessonList.textContent = '';
+  lessons.forEach((l, i) => {
+    const card = el('button', `lesson-card${l.id === nextId ? ' next' : ''}`);
+    card.dataset.lesson = l.id;
+    card.appendChild(el('span', 'lesson-no', String(i + 1)));
+    const title = el('span', 'lesson-title');
+    nameWithCode(title, l.title, l.code);
+    card.appendChild(title);
+    const stars = el('span', 'stars');
+    starText(stars, starsOf(l.id));
+    card.appendChild(stars);
+    card.appendChild(el('span', 'lesson-sub', l.subtitle));
+    lessonList.appendChild(card);
+  });
+}
+
+/** @param {Array<{key:string, ko:string, code:string, count:number, icon:string}>} items */
+export function renderBadges(items) {
+  badgeList.textContent = '';
+  for (const b of items) {
+    const box = el('div', `badge${b.count > 0 ? ' earned' : ''}`);
+    box.appendChild(el('span', 'badge-icon', b.icon));
+    const name = el('span', 'badge-name');
+    nameWithCode(name, b.ko, b.code);
+    box.appendChild(name);
+    box.appendChild(el('span', 'badge-count', b.count > 0 ? `실전 ${b.count}번 성공` : '아직 없어요'));
+    badgeList.appendChild(box);
+  }
+}
+
+export function onLesson(handler) {
+  lessonList.addEventListener('click', (e) => {
+    const card = e.target.closest('[data-lesson]');
+    if (card) handler(card.dataset.lesson);
+  });
+}
+
+export function setLessonHead(title, code) {
+  lessonName.textContent = '';
+  nameWithCode(lessonName, title, code);
+}
+
+/** 보기·찾기·써보기 알약. part가 현재, done은 끝낸 부분 집합. */
+export function setLessonPart(part, done) {
+  for (const span of lessonSteps.querySelectorAll('[data-part]')) {
+    const k = span.dataset.part;
+    span.classList.toggle('on', k === part);
+    span.classList.toggle('done', !!done?.[k] && k !== part);
+  }
+}
+
+/** @param {string} text  @param {''|'good'|'bad'} [tone] */
+export function setBubble(text, tone = '') {
+  bubble.textContent = text;
+  bubble.className = `bubble${tone ? ` ${tone}` : ''}`;
+}
+
+/**
+ * 레슨 화면 버튼 상태. 생략한 항목은 숨긴다.
+ * @param {{prev?:string, next?:string, hint?:boolean, place?:boolean, placeEnabled?:boolean}} cfg
+ */
+export function setLessonButtons(cfg) {
+  btnLessonPrev.hidden = !cfg.prev;
+  if (cfg.prev) btnLessonPrev.textContent = cfg.prev;
+  btnLessonNext.hidden = !cfg.next;
+  if (cfg.next) btnLessonNext.textContent = cfg.next;
+  btnLessonHint.hidden = !cfg.hint;
+  btnLessonPlace.hidden = !cfg.place;
+  btnLessonPlace.disabled = !cfg.placeEnabled;
+}
+
+export function setResultLessons(show) { btnResultLessons.hidden = !show; }
+
+// ── 코치·토스트 ─────────────────────────────────────────────────────────
+
+export function showCoach(text) { coachText.textContent = text; coachSheet.hidden = false; }
+export function hideCoach() { coachSheet.hidden = true; }
+
+let toastTimer = 0;
+/** 기술 이름을 잠깐 띄운다. 애니메이션을 다시 시작하려고 hidden을 껐다 켠다. */
+export function toast(text) {
+  clearTimeout(toastTimer);
+  toastEl.hidden = true;
+  toastEl.textContent = text;
+  // 강제 리플로우 — 같은 애니메이션을 연속으로 다시 재생하기 위해서다.
+  void toastEl.offsetWidth;
+  toastEl.hidden = false;
+  toastTimer = setTimeout(() => { toastEl.hidden = true; }, 1700);
 }
