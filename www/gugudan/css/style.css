@@ -315,9 +315,9 @@ button:active { transform: scale(.98); }
   font-family: "Jua", sans-serif; font-size: clamp(26px, 4.6vw, 38px);
 }
 .key.action { color: #655b86; background: #ebe6f8; font-family: "Noto Sans KR", sans-serif; font-size: clamp(16px, 2.4vw, 20px); font-weight: 900; }
-.key.confirm { color: #fff; background: linear-gradient(145deg, var(--pink), #e9478c); border-color: #ff86b9; box-shadow: 0 5px 0 #bd2f70; }
+/* 확정 키를 뺀 뒤 마지막 줄은 [지우기][0(두 칸)] — 0을 넓혀 빈 칸이 남지 않게 한다. */
+.key.zero { grid-column: span 2; }
 .key:active { transform: translateY(3px); box-shadow: 0 2px 0 #d7d0ec; }
-.key.confirm:active { box-shadow: 0 2px 0 #bd2f70; }
 
 /* ── 항로 고르기 ─────────────────────────────────────────────────── */
 .pick-wrap { flex: 1; min-height: 0; overflow-y: auto; padding: 4px var(--pad-x) max(24px, env(safe-area-inset-bottom)); }

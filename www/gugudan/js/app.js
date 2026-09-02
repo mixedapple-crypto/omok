@@ -116,9 +116,16 @@ function ask(kind, id) {
   };
   ui.setProblem(kind, problemText(id));
   ui.setAnswer(kind, '', '');
-  ui.setHint(kind, '숫자를 누르고 확정');
+  ui.setHint(kind, '숫자를 누르면 바로 넘어가요');
 }
 
+/**
+ * 숫자판. **자릿수가 차면 바로 제출한다** — 확정 키가 없다.
+ * 처음엔 확정 키 방식이었는데(답의 자릿수가 새고 첫 숫자 오타를 못 고친다는 이유), 실제로 써 보니
+ * 매 문제마다 탭이 하나 더 붙어 리듬을 깼다(사용자 지시, 2026-09-02). 한 자리 답은 72개 중 14개뿐이고
+ * 전부 ×1·2×2·2×3 같은 쉬운 것이라 자릿수가 새는 것은 배움에 영향이 없다. 두 자리 답은 첫 숫자를
+ * 지우기로 고칠 수 있다. 오타는 오답으로 기록되고 재출제된다 — 그 비용보다 밀도가 더 크다.
+ */
 function onKey(k) {
   if (!quiz) return;
   // 정답을 보여주는 1.2초와 넘어가는 0.3초 동안의 입력은 무시한다.
@@ -132,8 +139,7 @@ function onKey(k) {
     ui.setAnswer(quiz.kind, quiz.input, '');
     return;
   }
-  if (k === 'ok') { submit(); return; }
-  if (quiz.input.length >= 3) return;
+  if (!/^\d$/.test(k)) return; // 숫자 말고는 받지 않는다(옛 확정 키·Enter 포함)
 
   // 첫 키가 정답의 첫 자리와 다르면 헤맨 것으로 본다(고쳐서 맞혀도 자동화된 답은 아니다).
   if (quiz.phase === 'ask' && quiz.input === '' && k !== String(quiz.ans)[0]) quiz.fixed = true;
@@ -141,6 +147,7 @@ function onKey(k) {
   quiz.input += k;
   quiz.lastKeyAt = performance.now();
   ui.setAnswer(quiz.kind, quiz.input, '');
+  if (quiz.input.length >= String(quiz.ans).length) submit();
 }
 
 function submit() {

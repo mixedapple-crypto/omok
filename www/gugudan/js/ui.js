@@ -453,7 +453,6 @@ export function onKey(handler) {
     if (scr !== 'fuel' && scr !== 'race') return;
     if (e.key >= '0' && e.key <= '9') handler(e.key);
     else if (e.key === 'Backspace') handler('del');
-    else if (e.key === 'Enter') handler('ok');
     else return;
     e.preventDefault();
   });

@@ -2,14 +2,14 @@
  * 구구단 로켓 흐름 테스트 — 가짜 DOM 위에서 **진짜 index.html·app.js·ui.js를 통째로 구동**한다.
  *
  * 이 파일이 존재하는 이유: 문자열 대조(오목의 wiring.test 같은 것)는 "핸들러가 있는가"까지만 본다.
- * 핸들러가 엉뚱한 화면을 열거나, 확정 키 없이 답이 넘어가거나, 오답 뒤 재입력을 건너뛰거나,
+ * 핸들러가 엉뚱한 화면을 열거나, 자릿수가 차기 전에 답이 넘어가거나, 오답 뒤 재입력을 건너뛰거나,
  * 용돈이 두 번 들어가는 종류의 결함은 **눌러 봐야** 드러난다. Chrome 확장이 없는 환경에서
  * L3(브라우저 실측)의 상당 부분을 대신한다. 다만 **눈에 보이는 것**(겹침·글꼴·실제 배치)은
  * 여전히 검사하지 않는다 — 그건 기기에서 봐야 한다.
  *
  * 검사 범위:
  *   1. 홈 — 행성·배지·오늘 날짜·임무 표시
- *   2. 연료 채우기 — 확정 키로만 제출, 빈 입력 무시, ms는 마지막 숫자 키까지,
+ *   2. 연료 채우기 — 자릿수가 차면 바로 제출(확정 키 없음, 사용자 지시), 숫자 아닌 키 무시, ms는 마지막 숫자 키까지,
  *      fixed는 지우기 또는 첫 키가 정답 첫 자리와 다를 때(양쪽 다 확인),
  *      오답이면 정답 1.2초 노출 뒤 재입력 강제, 화면이 숨겨지면 sessionSkip
  *   3. 레이스 — 항로 목록·잠긴 세트, 오답도 재입력 없이 다음, 로켓 위치, 유령 로켓과 끄기
@@ -59,10 +59,9 @@ function raceCur() {
   const [a, b] = $('#race-problem').textContent.split('×').map((x) => Number(x.trim()));
   return { a, b, ans: a * b, id: `${a}x${b}` };
 }
-/** 정답을 치고 확정한 뒤 다음 문제까지 넘어간다. */
+/** 정답을 치면 마지막 숫자에서 바로 제출된다. 그 뒤 다음 문제까지 넘어간다. */
 function solveFuel() {
   digits(cur().ans);
-  dom.key('ok');
   clock.advance(GOOD);
 }
 
@@ -83,38 +82,67 @@ ok('문제가 떴다', /^\d × \d$/.test($('#fuel-problem').textContent), $('#fu
 eq('진행 0 / 24', $('#fuel-counter').textContent, '0 / 24');
 eq('입력칸은 비어 있다', $('#fuel-answer').textContent, '');
 
-// 빈 입력은 확정해도 무시한다
-dom.key('ok');
-eq('빈 입력으로 확정해도 넘어가지 않는다', $('#fuel-counter').textContent, '0 / 24');
+// 확정 키는 없다(사용자 지시 — 탭이 너무 잦았다). 빈 입력에서 지우기를 눌러도 아무 일도 없다.
+ok('숫자판에 확정 키가 없다', !dom.$('[data-key="ok"]'));
+dom.key('del');
+eq('빈 입력에서 지우기를 눌러도 넘어가지 않는다', $('#fuel-counter').textContent, '0 / 24');
+eq('입력칸도 그대로 비어 있다', $('#fuel-answer').textContent, '');
 
-// 확정 키로만 제출한다 + ms는 문제 표시부터 마지막 숫자 키까지
+const counterNo = () => Number($('#fuel-counter').textContent.split('/')[0]);
+
+// 두 자리 답: 첫 숫자로는 안 넘어가고, 마지막 숫자를 누르는 순간 제출된다. ms는 그 순간까지.
 {
-  const q = cur();
+  const q = nextTwoDigit();
+  ok('두 자리 답 문제를 찾았다', q !== null);
+  const s = String(q.ans);
+  const before = counterNo();
   clock.idle(150);                       // 문제를 보고 고민한 시간은 들어간다
-  digits(q.ans);
-  eq('숫자를 눌러도 확정 전에는 안 넘어간다', $('#fuel-counter').textContent, '0 / 24');
-  eq('누른 숫자가 입력칸에 보인다', $('#fuel-answer').textContent, String(q.ans));
-  clock.idle(400);                       // 확정 키를 늦게 눌러도 ms에 안 들어가야 한다
-  dom.key('ok');
-  eq('정답이면 입력칸이 밝아진다', $('#fuel-answer').className.includes('good'), true);
+  dom.key(s[0]);
+  eq('자릿수가 차기 전에는 안 넘어간다', counterNo(), before);
+  eq('누른 숫자가 입력칸에 보인다', $('#fuel-answer').textContent, s[0]);
+  clock.idle(400);                       // 둘째 숫자를 고민한 시간도 들어간다
+  dom.key(s[1]);
+  eq('마지막 숫자를 누르면 바로 제출되어 입력칸이 밝아진다', $('#fuel-answer').className.includes('good'), true);
   clock.advance(GOOD);
-  eq('정답 뒤 1 / 24', $('#fuel-counter').textContent, '1 / 24');
-  eq('ms는 마지막 숫자 키까지만 센다', last(q.id).ms, 150);
+  eq('정답 뒤 답 수가 하나 오른다', counterNo(), before + 1);
+  eq('ms는 마지막 숫자 키까지 센다', last(q.id).ms, 550);
   eq('바로 맞히면 fixed=false', last(q.id).fixed, false);
   eq('정답으로 기록됐다', last(q.id).ok, true);
 }
 
-// 지우기를 쓰면 fixed=true (답이 맞아도)
+// 한 자리 답: 숫자 하나로 바로 제출된다
 {
-  const q = cur();
-  dom.key('7');
+  const q = nextOneDigit();
+  ok('한 자리 답 문제를 찾았다', q !== null);
+  const before = counterNo();
+  dom.key(String(q.ans));
+  ok('한 자리 답은 첫 숫자에서 제출된다', $('#fuel-answer').className.includes('good'));
+  clock.advance(GOOD);
+  eq('답 수가 하나 오른다', counterNo(), before + 1);
+  eq('정답으로 기록됐다', last(q.id).ok, true);
+}
+
+// 지우기를 쓰면 fixed=true (답이 맞아도) — 두 자리 답의 첫 숫자는 지울 수 있다
+{
+  const q = nextTwoDigit();
+  const s = String(q.ans);
+  dom.key(s[0]);
   dom.key('del');
   eq('지우기를 누르면 입력칸이 비워진다', $('#fuel-answer').textContent, '');
   digits(q.ans);
-  dom.key('ok');
   clock.advance(GOOD);
   eq('지우기를 쓰면 fixed=true', last(q.id).fixed, true);
   eq('그래도 정답은 정답', last(q.id).ok, true);
+}
+
+/** 한 자리 답이 나올 때까지 정답으로 넘긴다. */
+function nextOneDigit() {
+  for (let i = 0; i < 30; i++) {
+    const q = cur();
+    if (String(q.ans).length === 1) return q;
+    solveFuel();
+  }
+  return null;
 }
 
 /** 두 자리 답이 나올 때까지 정답으로 넘긴다(첫 키 규칙은 두 자리에서만 갈린다). */
@@ -134,8 +162,7 @@ function nextTwoDigit() {
   const s = String(q.ans);
   const wrongFirst = String((Number(s[0]) % 9) + 1); // 정답 첫 자리와 다른 숫자
   dom.key(wrongFirst);
-  dom.key(s[1]);                                      // 지우기는 쓰지 않는다
-  dom.key('ok');
+  dom.key(s[1]);                                      // 지우기는 쓰지 않는다. 둘째 숫자에서 바로 제출된다
   eq('오답이면 정답을 보여준다', $('#fuel-answer').textContent, s);
   ok('오답 표시에 bad 색', $('#fuel-answer').className.includes('bad'));
   ok('재입력을 안내한다', $('#fuel-hint').textContent.includes('정답을'), $('#fuel-hint').textContent);
@@ -148,12 +175,10 @@ function nextTwoDigit() {
   eq('아직 같은 문제다', $('#fuel-problem').textContent, `${q.a} × ${q.b}`);
 
   digits(Number(s) === 11 ? 12 : 11);                 // 재입력도 틀리면
-  dom.key('ok');
   clock.advance(GOOD);
   eq('재입력이 틀리면 안 넘어간다', $('#fuel-problem').textContent, `${q.a} × ${q.b}`);
 
   digits(s);
-  dom.key('ok');
   clock.advance(GOOD);
   ok('정답을 다시 치면 다음 문제로', $('#fuel-problem').textContent !== `${q.a} × ${q.b}`
     || $('#fuel-answer').textContent === '', $('#fuel-problem').textContent);
@@ -169,20 +194,19 @@ function nextTwoDigit() {
   ok('두 자리 답 문제를 또 찾았다', q !== null);
   const s = String(q.ans);
   dom.key(s[0]);
-  dom.key(String((Number(s[1]) + 1) % 10));           // 첫 키는 맞고 둘째만 틀림
-  dom.key('ok');
+  dom.key(String((Number(s[1]) + 1) % 10));           // 첫 키는 맞고 둘째만 틀림 — 둘째에서 바로 제출
   clock.advance(SHOW);
   digits(s);
-  dom.key('ok');
   clock.advance(GOOD);
   eq('첫 키가 맞으면 뒤가 틀려도 fixed=false', last(q.id).fixed, false);
 }
 
 // 화면이 숨겨졌다 돌아오면 그 문제는 버린다(sessionSkip)
 {
+  const q2 = nextTwoDigit();                          // 두 자리 답이어야 숫자 하나로 제출되지 않는다
   const before = $('#fuel-problem').textContent;
   const pos = $('#fuel-counter').textContent;
-  dom.key('3');
+  dom.key(String(q2.ans)[0]);
   dom.visibility(true);
   dom.visibility(false);
   eq('돌아오면 입력칸이 비어 있다', $('#fuel-answer').textContent, '');
@@ -229,8 +253,9 @@ ok('유령 기록이 없으면 트랙을 감춘다', $('.race-stage').classList.
 {
   const q = raceCur();
   const posBefore = $('#race-counter').textContent;
-  digits(q.ans === 1 ? 2 : 1);
-  dom.key('ok');
+  // 자릿수가 같은 오답을 친다 — 자릿수가 차야 제출되므로.
+  const wrong = String(q.ans + 1).length === String(q.ans).length ? q.ans + 1 : q.ans - 1;
+  digits(wrong);
   ok('레이스 오답도 정답을 보여준다', $('#race-answer').textContent === String(q.ans), $('#race-answer').textContent);
   clock.advance(SHOW);
   ok('레이스는 재입력 없이 다음 문제로', $('#race-counter').textContent !== posBefore, $('#race-counter').textContent);
@@ -241,7 +266,6 @@ ok('유령 기록이 없으면 트랙을 감춘다', $('.race-stage').classList.
   let guard = 0;
   while (dom.screen() === 'race' && guard++ < 100) {
     digits(raceCur().ans);
-    dom.key('ok');
     clock.advance(GOOD);
   }
   eq('레이스 결과 화면', dom.screen(), 'race-result');
@@ -485,7 +509,6 @@ eq('인증 배지가 아직 미완(서로 다른 날 두 번)', engine.badges(st
   ok('유령 이름표에 시간이 있다', $('#ghost-label').textContent.includes('초'), $('#ghost-label').textContent);
 
   digits(raceCur().ans);
-  dom.key('ok');
   clock.advance(GOOD);
   dom.tick();
   eq('9문제 중 1개 맞히면 로켓은 1/9 지점', Number($('#rocket-mine').style['--p']), 1 / 9);

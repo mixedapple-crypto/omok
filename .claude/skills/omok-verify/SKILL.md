@@ -85,7 +85,7 @@ Chrome 확장이 없을 때 L3의 11~15번 항목을 이것으로 대신할 수 
 - gugudan-engine: 사실 72개·거꾸로 순서(9×9→2×1) · 진단 세션이 단을 섞어 24개 · 오답 재출제 3~5뒤·세션 4회 상한 · 오답 값으로 혼동쌍 생성(6×7에 48 → 6×8) · 분리→대비→극복 · 5일 굶은 사실 강제 출제 · 레이스 유령은 2회부터 중간값 · 인증은 수정 2개·다른 날 2회 · 임무 셋이면 하루 한 번 30원 · 단계는 뒤로 안 감
 - gugudan-sim: 가상의 아이 45일 — 세션 크기·상한·간격·분리 쌍 미동석·최대 미출제 5일 위반 0건, 사흘 안에 1단계, 45일 안에 혼합 단계, 어려운 사실도 숙달
 - gugudan-doc-sync: 지침서의 세션 수치·숙달 기준·단계 표·세트 표·배지 표·상수 이름이 코드와 일치
-- gugudan-wiring: data-action 28개 ↔ ACTIONS, ui.js id ↔ HTML, 화면 9개 CSS 규칙, app.js import 그래프가 sw.js 캐시 목록에 전부, 엔진이 document·Date.now·localStorage를 모름, 확정·지우기 키, visibilitychange→sessionSkip
+- gugudan-wiring: data-action 28개 ↔ ACTIONS, ui.js id ↔ HTML, 화면 9개 CSS 규칙, app.js import 그래프가 sw.js 캐시 목록에 전부, 엔진이 document·Date.now·localStorage를 모름, 확정 키 없음(자릿수가 차면 제출)·지우기 키·0이 두 칸, visibilitychange→sessionSkip
 - gugudan-flow: 진짜 index.html을 파싱한 가짜 DOM 위에서 app.js를 통째로 구동 — 연료 24문제(빈 입력 무시·확정 키·오답 재입력 강제)·레이스·구두·임무 30원·암송·부모 잠금 3초·저금통 두 번 확인·인증 통과/실패
 
 **FAIL이 1건이라도 있으면 출력 원문을 그대로 인용해 보고하고 여기서 중단한다.** L2로 넘어가지 않는다.

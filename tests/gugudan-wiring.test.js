@@ -93,8 +93,9 @@ for (const href of [...all(html, /<link[^>]+href="([^"]+)"/g), ...all(html, /<sc
 }
 
 // --- 입력 규칙의 흔적 --------------------------------------------------------------------
-ok('확정 키가 있다', /확정/.test(html));
+ok('확정 키가 없다 — 자릿수가 차면 바로 제출한다(사용자 지시)', !/data-key="ok"/.test(html) && !/확정<\/button>/.test(html));
 ok('지우기 키가 있다', /지우기/.test(html));
+ok('숫자판 0이 두 칸을 차지해 빈 칸이 없다', /class="key zero" data-key="0"/.test(html) && /\.key\.zero\s*\{[^}]*span 2/.test(css));
 ok('앱이 performance.now로 시간을 잰다', /performance\.now\(/.test(appJs));
 ok('숨겨졌을 때 문제를 무효화한다', /visibilitychange/.test(appJs) && /sessionSkip/.test(appJs));
 ok('오디오 잠금 해제는 click·pointerup에서', /addEventListener\('(click|pointerup)'[^)]*unlock/.test(appJs) || /'(click|pointerup)',\s*\(\)\s*=>\s*audio\.unlock/.test(appJs));
