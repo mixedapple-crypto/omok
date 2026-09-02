@@ -487,11 +487,15 @@ function finishChant() {
   openChant();
 
   if (c.mode === 'practice') {
-    audio.win();
+    // 정지를 눌러 중간에 끝냈으면 "끝까지"라고 하지 않는다 — 실측에서 2초 만에 멈춰도 완주로 적히던 것을 고쳤다.
+    const total = engine.BACKWARD_ORDER.length;
+    const reached = Math.min(total, (c.i ?? -1) + 1);
+    const complete = reached >= total;
+    if (complete) audio.win(); else audio.stone();
     ui.showDone({
       kicker: '거꾸로 암송 · 연습',
-      title: `${c.pace}초 박자로 끝까지!`,
-      rows: [['다음 목표', `${nextPace(c.pace)}초 박자`]],
+      title: complete ? `${c.pace}초 박자로 끝까지!` : `${reached} / ${total} 까지 연습했어요`,
+      rows: complete ? [['다음 목표', `${nextPace(c.pace)}초 박자`]] : [['박자', `${c.pace}초`]],
       again: '한 번 더',
     });
     return;
