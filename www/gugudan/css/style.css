@@ -34,6 +34,10 @@ body {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  /* iOS는 같은 자리를 빠르게 두 번 누르면 화면을 확대한다. 숫자판은 같은 숫자를 연달아
+     누르는 일이 흔해서 문제를 풀다 말고 화면이 커진다. 두 손가락 확대는 남기고
+     더블탭 확대만 끈다 — 위의 `user-scalable=no`는 iOS 10부터 무시된다. */
+  touch-action: manipulation;
 }
 
 button { border: 0; font: inherit; color: inherit; cursor: pointer; }

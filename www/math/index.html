@@ -24,7 +24,12 @@
     --hp-foe:#F26D6D;
     --gold:#F5B840;
   }
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  /* iOS는 같은 자리를 빠르게 두 번 누르면 화면을 확대한다. 숫자판은 같은 숫자를 연달아
+     누르는 일이 흔해서(22, 33 …) 문제를 풀다 말고 화면이 커져 버렸다.
+     `manipulation`은 두 손가락 확대는 남기고 **더블탭 확대만** 끈다.
+     ⚠️ 뷰포트의 `user-scalable=no`로는 안 된다 — iOS 10부터 무시한다.
+     한 요소라도 `touch-action:auto`로 남으면 그 자리에서 다시 커지므로 `*`에 건다. */
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   html{color-scheme:light}
   body{
     background:var(--paper);
@@ -113,7 +118,8 @@
   .hint{font-size:13px;color:#B07A10;background:#FFF3D6;border-radius:10px;padding:6px 10px;margin-top:8px;display:none}
   .msg{font-family:'Jua';font-size:15px;margin-top:6px;min-height:22px;color:var(--meadow-deep)}
   .pad{margin:10px auto 0;padding:0 16px 20px;width:100%;max-width:380px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-  .pad button{background:var(--card);border-radius:16px;font-size:28px;font-family:'Jua';padding:12px 0;box-shadow:0 4px 0 rgba(65,55,42,.14);transition:transform .06s}
+  .pad button{background:var(--card);border-radius:16px;font-size:28px;font-family:'Jua';padding:12px 0;box-shadow:0 4px 0 rgba(65,55,42,.14);transition:transform .06s;
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   .pad button:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(65,55,42,.14)}
   .pad .k-del{background:#F4E9D8;font-size:22px}
   .pad .k-paw{background:transparent;box-shadow:none;cursor:default;opacity:.35;font-size:22px}

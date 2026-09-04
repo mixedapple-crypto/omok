@@ -20,7 +20,7 @@ new Function('module', source)(mod);
 const { P, DP, genByType, genDiv, pickType, makeProblem, gridSteps, divSteps, stepsFor,
         foeMaxHP, MIX, ZONES, ANIMALS, STAGES, BOSS_TOTAL, withJosa, numJosa, PET_FORMS,
         isDiv, isWhole, isSplit, isQuotOnly, isProdOnly, isLateRem, isCarryShown, isDivStage,
-        TIME, timeFor, remCols, TYPES, HINTS } = mod.exports;
+        TIME, STAGE_BONUS, timeFor, remCols, TYPES, HINTS } = mod.exports;
 
 ok('스크립트에서 로직을 꺼냈다', typeof P === 'function' && typeof DP === 'function' && typeof stepsFor === 'function');
 
@@ -269,7 +269,33 @@ for (let i = 0; i < 1500; i++) {
 }
 ok('무작위 1500문제에서도 뺀 값 칸 자리가 어긋나지 않는다', remPosAll);
 
-eq('나눗셈 제한 시간', TIME.D.join('/'), '15000/12000/10000');
+// 2026-09-02 아이가 몫+뺀 값 판에서 시간이 모자란다고 해서 나눗셈만 3초씩 늘렸다(사용자 실측).
+eq('나눗셈 제한 시간 (한 자리)', TIME.D.join('/'), '18000/15000/13000');
+eq('나눗셈 제한 시간 (두 자리)', TIME.Dw.join('/'), '22000/19000/16000');
+eq('곱셈 제한 시간은 그대로다', TIME.M.join('/') + ' ' + TIME.M3.join('/'), '7000/6000/5000 10000/9000/8000');
+
+/*
+ * 판 단위 덧시간. 시간표가 **문제 유형** 단위라, 15스테이지 보스만 늘리려고 TIME.M을 올리면
+ * 같은 시간표를 쓰는 1·2·13·14스테이지까지 헐거워지고, 18·19만 늘리려고 TIME.Dw를 올리면
+ * 16·17·20까지 따라 늘어난다. 그래서 STAGE_BONUS로 그 판만 늘린다 — 이 검사가 지키는 것은
+ * 값 자체가 아니라 **다른 스테이지가 딸려 오지 않는다**는 성질이다. (2026-09-04 사용자 실측)
+ */
+eq('스테이지별 덧시간', Object.keys(STAGE_BONUS).map((k) => `${k}:${STAGE_BONUS[k]}`).join(' '),
+  '15:2000 18:5000 19:5000');
+eq('15스테이지는 곱셈 시간표에 2초를 더 받는다', timeFor(MIX[15][0][0], 15).join('/'), '9000/8000/7000');
+eq('18·19스테이지는 두 자리 나눗셈 시간표에 5초를 더 받는다',
+  timeFor(MIX[18][0][0], 18).join('/') + ' ' + timeFor(MIX[19][0][0], 19).join('/'),
+  '27000/24000/21000 27000/24000/21000');
+ok('덧시간이 같은 시간표를 쓰는 다른 스테이지로 번지지 않는다',
+  [1, 2, 5, 13, 14].every((st) => timeFor(MIX[st][0][0], st) === TIME.M) &&
+  [16, 17, 20].every((st) => timeFor(MIX[st][0][0], st) === TIME.Dw));
+ok('덧시간이 유형 시간표 자체를 고치지 않는다',
+  TIME.M.join('/') === '7000/6000/5000' && TIME.Dw.join('/') === '22000/19000/16000');
+ok('덧시간을 주는 스테이지는 모두 실제로 있는 판이다',
+  Object.keys(STAGE_BONUS).every((k) => Number(k) >= 1 && Number(k) <= STAGES && !!MIX[k]));
+/* 화면 쪽에서 스테이지를 안 넘기면 덧시간이 조용히 사라진다 — 유형 시간표만 남으니 화면은
+   멀쩡해 보이고 아이만 5초를 못 받는다. 그 호출은 DOM 블록 안이라 위 검사들이 못 본다. */
+ok('전투 타이머가 timeFor에 스테이지를 넘긴다', /timeFor\([^)]*,\s*B\.stage\)/.test(source));
 
 /* ----- 구역 안의 사다리: 일반은 도움을 주고 보스는 걷어낸다 ----- */
 

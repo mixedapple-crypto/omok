@@ -30,6 +30,9 @@ body {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  /* 같은 자리를 빠르게 두 번 누르면 iOS가 화면을 확대한다. 반상에는 이미 걸어 두었지만
+     단추에는 없어서 연달아 누르면 커졌다. 두 손가락 확대는 남고 더블탭 확대만 꺼진다. */
+  touch-action: manipulation;
 }
 
 #app { height: 100%; }

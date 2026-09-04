@@ -18,7 +18,9 @@
     --coral:#FF8A5C; --coral-deep:#E96F41; --sky:#BFE4F5;
     --ink:#41372A; --ink-soft:#8A7B66; --card:#FFFFFF; --gold:#F5B840;
   }
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  /* 같은 자리를 빠르게 두 번 누르면 iOS가 화면을 확대한다. 두 손가락 확대는 남기고
+     더블탭 확대만 끈다 — 네 게임 모두 같은 규칙이다. */
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   html{color-scheme:light}
   body{
     background:linear-gradient(180deg,var(--sky) 0%,#DFF0D8 40%,var(--paper) 75%);
@@ -52,6 +54,11 @@
   .num3{border-color:#E98A3C}
   .num4{border-color:#5D45D8}
   footer{margin-top:26px;font-size:12px;color:var(--ink-soft)}
+  /* 새 버전 확인 줄. 아이 눈에 띄지 않게 작게, 부모가 찾으면 보이게. */
+  .update{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:center}
+  .update button{font:inherit;font-size:12px;color:var(--ink-soft);background:var(--card);border:1.5px solid #E3D8C6;border-radius:999px;padding:4px 12px;cursor:pointer}
+  .update button:active{transform:translateY(1px)}
+  .update .ver{font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
@@ -94,21 +101,75 @@
         <span class="go">▶</span>
       </a>
     </nav>
-    <footer>즐겁게 놀고, 눈도 쉬어 가면서! 🍀</footer>
+    <footer>
+      즐겁게 놀고, 눈도 쉬어 가면서! 🍀
+      <div class="update">
+        <button id="btn-update" type="button">🔄 새 소식 확인</button>
+        <span id="update-msg" aria-live="polite"></span>
+        <span class="ver">버전 <span id="ver">__BUILD__</span></span>
+      </div>
+    </footer>
   </main>
 <script>
   /*
    * 오프라인 지원. 실패해도 포털은 정상 동작하므로 조용히 넘어간다.
    * 경로는 상대경로여야 한다 — GitHub Pages가 하위 경로(/omok/)로 서빙한다.
+   *
+   * 새 버전 갱신. 포털 워커는 캐시 우선이라 배포 뒤 첫 실행에서는 옛 화면이 먼저 뜨고
+   * 새 워커는 그 뒤에 설치된다. 그대로 두면 새 메뉴는 **두 번째 실행**부터 보인다.
+   * 그래서 새 워커가 이 화면을 넘겨받는 순간(controllerchange) 한 번만 다시 불러온다.
+   * 게임 화면에는 넣지 않는다 — 플레이 중에 화면이 튀면 안 된다. 게임 파일은 다음에
+   * 포털을 거쳐 들어갈 때 새 워커가 준다.
+   * ⚠️ 처음 설치할 때도 controllerchange가 온다. 그때는 넘겨받기 전부터 같은 화면이라
+   * 다시 불러올 이유가 없고, 잘못 불러오면 무한 새로고침의 씨앗이 된다. 넘겨받기 전에
+   * 워커가 있었는지(hadController)로 가른다.
    */
-  if ('serviceWorker' in navigator
-      && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  var msgEl = document.getElementById('update-msg');
+  var verEl = document.getElementById('ver');
+  // 버전은 배포 시 CI가 커밋 SHA로 바꿔 넣는다(.github/workflows/pages.yml). 로컬에서는 자리표시자 그대로다.
+  if (verEl.textContent.charAt(0) === '_') verEl.textContent = '개발판';
+  function say(t) { msgEl.textContent = t; }
+
+  var swOK = 'serviceWorker' in navigator
+      && (location.protocol === 'https:' || location.hostname === 'localhost');
+  if (swOK) {
+    var hadController = !!navigator.serviceWorker.controller;
+    var reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController || reloading) return;
+      reloading = true;
+      say('새 버전을 받았어! 다시 여는 중…');
+      location.reload();
+    });
     window.addEventListener('load', function () {
       navigator.serviceWorker.register('./sw.js').catch(function (err) {
         console.warn('[게임숲] 오프라인 지원 등록 실패(포털은 정상):', err);
       });
     });
   }
+
+  /*
+   * 부모용 확인 단추. 브라우저가 알아서 하는 새 버전 확인을 지금 당장 시키고 결과를 말로
+   * 알려준다. 새 버전이 있으면 위의 controllerchange가 이어받아 화면을 다시 불러온다.
+   * 캐시를 통째로 지우고 다시 받는 방식은 쓰지 않는다 — 오프라인이면 빈 화면이 된다.
+   */
+  document.getElementById('btn-update').addEventListener('click', function () {
+    if (!swOK) { say('여기서는 저장 기능을 쓰지 않아'); return; }
+    if (!navigator.onLine) { say('인터넷이 없어서 확인 못 했어'); return; }
+    say('확인하는 중…');
+    navigator.serviceWorker.getRegistration().then(function (reg) {
+      if (!reg) { say('아직 저장된 게 없어. 한 번 더 열어 봐'); return; }
+      // 오목 워커(./omok/)도 같이 확인시킨다. 이 화면을 맡은 워커가 아니라 여기서는 티가
+      // 안 나지만, 다음에 오목에 들어갈 때 새 버전이 된다.
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        regs.forEach(function (r) { if (r !== reg) r.update().catch(function () {}); });
+      });
+      return reg.update().then(function () {
+        if (reg.installing || reg.waiting) say('새 버전 받는 중…');
+        else say('이미 최신이야');
+      });
+    }).catch(function () { say('인터넷이 없어서 확인 못 했어'); });
+  });
 </script>
 </body>
 </html>
