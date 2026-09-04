@@ -50,6 +50,20 @@ export const CERT_DAYS = 2;
 /** 임무·용돈·배지 */
 export const ALLOWANCE = 30;
 export const STREAK_DAYS = 3;
+/**
+ * 연료 채우기 한 판의 목표 시간(답 시간 합계).
+ *
+ * ⚠️ 이것은 **통과선이 아니라 목표**다. 24문제 × 2초이므로, 여덟 단이 전부 안정
+ * (사실당 중간값 DAN_MS=2초)에 닿아야 나오는 기록이다. 그건 1단계의 졸업 조건과 같은 값이다.
+ * 매일의 통과선으로 걸면 1단계를 졸업해야 열리는 문을 1단계 첫날에 세우는 셈이라
+ * 몇 주를 내리 지게 된다. 레이스의 유령이 최고 기록이 아니라 중간값인 것과 같은 이유다.
+ * 그래서 실패가 없는 배지로 두고, 화면은 고정 목표가 아니라 아이 자신의 최근 기록과 견준다.
+ *
+ * 정확도 문턱(RACE_STABLE)을 같이 두는 이유: 전부 틀리면 판이 140문제까지 늘지만 거기서 멈춘다
+ * (한 사실당 MAX_PER_SESSION번). 한 문제를 0.3초로 두드리면 42초라, 시간만 보면 배지가 뚫린다.
+ * 어림으로는 96문제라고 봤는데 채움 문제까지 붙어 140문제였다 — 재보고 막았다.
+ */
+export const FUEL_GOAL_MS = 50000;
 
 export const STAGE_NAMES = Object.freeze(['진단', '단별 안정', '혼합', '구두 인증', '거꾸로 도전']);
 
@@ -57,6 +71,7 @@ export const BADGE_NAMES = Object.freeze({
   planet: '행성 안정',
   pair: '혼동쌍 극복',
   perfect: '완벽 항로',
+  fuel50: '연료 50초',
   streak: '사흘 안정',
   cert: '구두 인증',
   chant36: '거꾸로 36초',
@@ -143,6 +158,7 @@ export function newState() {
     chantBest: null,
     chantLog: [],
     chant36Days: [],
+    fuel50Days: [],
     oralLog: [],
     mission: { day: null, fuel: false, race: false, oral: false, paid: false },
     missionDays: [],
@@ -224,6 +240,7 @@ export function badges(state) {
     { key: 'planet', name: BADGE_NAMES.planet, earned: stableN > 0, count: stableN },
     { key: 'pair', name: BADGE_NAMES.pair, earned: state.pairsDone > 0, count: state.pairsDone },
     { key: 'perfect', name: BADGE_NAMES.perfect, earned: state.perfectRaces > 0, count: state.perfectRaces },
+    { key: 'fuel50', name: BADGE_NAMES.fuel50, earned: state.fuel50Days.length > 0, count: state.fuel50Days.length },
     { key: 'streak', name: BADGE_NAMES.streak, earned: state.streakCount > 0, count: state.streakCount },
     { key: 'cert', name: BADGE_NAMES.cert, earned: state.certDays.length >= CERT_DAYS, count: state.certDays.length },
     { key: 'chant36', name: BADGE_NAMES.chant36, earned: state.chant36Days.length > 0, count: state.chant36Days.length },
@@ -354,7 +371,9 @@ function contrastPartners(state, id) {
 }
 
 export function buildSession(state, now, rng = Math.random) {
-  const base = { pos: 0, correct: 0, answered: 0, done: false, retype: null, counts: {}, ms: 0 };
+  /* ghostMs·isBest·goalMet은 판이 끝나는 순간 sessionAnswer가 채운다. 처음부터 자리를 만들어 두는
+     이유는 화면이 판 도중에 읽어도 undefined가 나오지 않게 하기 위해서다. */
+  const base = { pos: 0, correct: 0, answered: 0, done: false, retype: null, counts: {}, ms: 0, ghostMs: null, isBest: false, goalMet: false };
 
   if (!allSeen(state)) {
     const unseen = FACT_IDS.filter((id) => state.facts[id].seen === 0);
@@ -492,6 +511,18 @@ export function sessionAnswer(state, session, { value, ms, fixed }, now) {
   if (session.pos >= session.items.length) {
     session.done = true;
     const day = dayKey(now);
+    /* 유령과 최고 기록은 **이번 판을 넣기 전에** 센다. 넣고 나서 세면 이번 판이 자기 자신과
+       겨루게 되어 최고 기록이 영영 안 나온다. raceFinish도 같은 순서다. */
+    session.ghostMs = sessionGhostMs(state, session.kind);
+    const past = state.sessions.filter((r) => r.kind === session.kind);
+    session.isBest = past.length > 0 && session.ms < Math.min(...past.map((r) => r.ms));
+    /* 50초 배지. 연료 채우기만 센다 — 진단은 72개를 처음 재는 판이라 빠를 수가 없고,
+       빠르다면 그건 아직 아무것도 모른다는 뜻이다. */
+    session.goalMet = session.kind === 'fuel'
+      && session.ms <= FUEL_GOAL_MS
+      && session.answered > 0
+      && session.correct / session.answered >= RACE_STABLE;
+    if (session.goalMet && !state.fuel50Days.includes(day)) state.fuel50Days.push(day);
     state.sessions.push({ day, kind: session.kind, correct: session.correct, total: session.answered, ms: session.ms });
     if (state.sessions.length > 60) state.sessions.splice(0, state.sessions.length - 60);
     if (session.kind === 'diag' && !state.diagDays.includes(day)) state.diagDays.push(day);
@@ -513,6 +544,16 @@ export function sessionSkip(state, session) {
   session.pos--; // insertLater는 "지금 자리 뒤"를 기준으로 세므로 한 칸 물러 세운다
   insertLater(state, session, id, REQUEUE_MIN - 1);
   session.pos++;
+}
+
+/**
+ * 연료 채우기의 유령. 같은 종류 최근 GHOST_N판의 중간값이고, 기록이 2판 미만이면 없다.
+ * 레이스의 ghostMs와 같은 방식이자 같은 이유다 — 최고 기록과 매번 겨루면 피곤한 날마다 진다.
+ */
+export function sessionGhostMs(state, kind = 'fuel') {
+  const runs = state.sessions.filter((r) => r.kind === kind).slice(-GHOST_N);
+  if (runs.length < 2) return null;
+  return median(runs.map((r) => r.ms));
 }
 
 // ── 레이스 ───────────────────────────────────────────────────────────────────

@@ -60,12 +60,15 @@ export function isMastered(state, id);       // acc3===3 && median3<=1500 && max
 export function danStable(state, dan);       // 그 단 9개 전부 acc3===3 && median3<=2000
 export function stage(state, now);           // → { no:0|1|2|3|4, name, detail }   name: '진단'|'단별 안정'|'혼합'|'구두 인증'|'거꾸로 도전'
 export function planets(state);              // → [{ dan, status:'stable'|'now'|'far' }]  now = 안정 안 된 첫 단
-export function badges(state);               // → [{ key, name, earned, count }] key: planet|pair|perfect|streak|cert|chant36
+export function badges(state);               // → [{ key, name, earned, count }] key: planet|pair|perfect|fuel50|streak|cert|chant36
 export function parentGrid(state, view, now);// view 'acc'|'time'|'last' → [{ dan, cells:[{ id, value, level:0..3, label }] }]  (8행×9열)
 export function confusionList(state);        // → [{ a, b, count, phase:'apart'|'contrast'|'done' }]
 
 // 연료 채우기 / 진단 세션 (24문제)
-export function buildSession(state, now, rng);          // → Session { kind:'diag'|'fuel', items:[id], pos, correct, answered, done }
+export function buildSession(state, now, rng);          // → Session { kind:'diag'|'fuel', items:[id], pos, correct, answered, done, ms, ghostMs, isBest, goalMet }
+//   ms·ghostMs·isBest·goalMet은 판이 끝나는 순간 채워진다. 결과 화면이 "이번 판 시간 / 최근 기록"을 그리는 데 쓴다.
+//   ghostMs는 기록이 2판 미만이면 null이고, 그때 화면은 대신 목표(FUEL_GOAL_MS)를 보여준다.
+export function sessionGhostMs(state, kind);            // → ms | null   같은 종류 최근 GHOST_N판의 중간값
 export function sessionCurrent(session);                // → id | null
 export function sessionAnswer(state, session, { value, ms, fixed }, now);
 //   value: 아이가 넣은 숫자, ms: 문제 표시부터 마지막 숫자까지, fixed: 지우기를 썼거나 첫 숫자가 틀렸으면 true
@@ -115,7 +118,7 @@ export function importState(text);           // → state (검증 실패 시 thr
   facts: { '7x8': { hist: [{ day, ms, ok, fixed }], lastDay, interval, seen } },   // hist 최근 10개
   pairs: { '6x7|6x8': { a:'6x7', b:'6x8', count, phase, reverted, okDays:[] } },
   diagDays: [], sessions: [], races: { 'dan-6': [{ day, ms, correct, total }] },
-  stage2Days: [], certDays: [], chantBest: null, chant36Days: [],
+  stage2Days: [], certDays: [], chantBest: null, chant36Days: [], fuel50Days: [],
   mission: { day, fuel, race, oral, paid }, missionDays: [],
   allowance: { coins, total }, perfectRaces: 0, pairsDone: 0,
   settings: { ghost: true, chantPace: 72 },
@@ -138,7 +141,7 @@ export function exportText(); export function importText(text);
 
 | 화면 | 시안 | 내용 |
 |---|---|---|
-| home | 화면 1 | 오늘의 임무(연료 채우기 1회·레이스 1회·구두 카드 10장 체크), 연료 게이지(임무 진행 3단계), 행성 8개(`planets()`), 배지 6개(`badges()`), 용돈 30원 표시, 부모 잠금 버튼(3초 길게 누르면 부모 화면) |
+| home | 화면 1 | 오늘의 임무(연료 채우기 1회·레이스 1회·구두 카드 10장 체크), 연료 게이지(임무 진행 3단계), 행성 8개(`planets()`), 배지 7개(`badges()`), 용돈 30원 표시, 부모 잠금 버튼(3초 길게 누르면 부모 화면) |
 | fuel | 화면 2 | `buildSession` 24문제. 큰 문제, 입력칸, 숫자판 0~9·지우기·확정. 진행 n/24, 연료 게이지. 끝나면 결과 카드(정답 수, 임무 체크)와 홈으로 |
 | race-pick | 없음 | `raceSets()` 목록에서 고른다. 사용 불가 세트는 잠긴 모양. 유령 기록(있으면) 표시 |
 | race | 화면 3 | 트랙 위 내 로켓(정답 수 비례)과 유령 로켓(유령 ms 대비 경과 시간 비례, 설정에서 끌 수 있음), 문제·숫자판, 진행 n/N |

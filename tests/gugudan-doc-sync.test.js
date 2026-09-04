@@ -90,12 +90,14 @@ claims('인증 날 수', '통과하면 인증', `서로 다른 ${E.CERT_DAYS}일
 /* --- 임무·용돈·배지 --- */
 claims('용돈', '저금통에', `${E.ALLOWANCE}원`);
 claims('연속 배지 일수', '임무 완료가', `${E.STREAK_DAYS}일 연속`);
+claims('연료 50초 목표 시간', '연료 채우기 한 판을', `${E.FUEL_GOAL_MS / 1000}초 안에`);
+claims('연료 50초 정확도 문턱', '연료 채우기 한 판을', `정확도 ${Math.round(E.RACE_STABLE * 100)}% 이상`);
 {
   const rows = tableRows('| 배지 | 조건 |');
   ok('배지 표가 있다', rows !== null);
   if (rows) {
     const names = Object.values(E.BADGE_NAMES);
-    eq('배지 표는 여섯 줄', rows.length, names.length);
+    eq('배지 표 줄 수가 코드의 배지 수와 같다', rows.length, names.length);
     names.forEach((n, i) => ok(`배지 ${i + 1}: ${n}`, (rows[i] ?? '').includes(`| ${n} |`), (rows[i] ?? '').trim()));
     ok('배지 조건 문구가 코드와 같은 순서', E.badges(E.newState()).map((b) => b.name).join() === names.join());
   }

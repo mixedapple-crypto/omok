@@ -238,20 +238,38 @@ function finishFuel() {
   const total = session.answered;
   const correct = session.correct;
   const kind = session.kind;
+  /* 한 판 전체의 시간만 보여준다. 문제 하나의 초는 아이에게 안 보인다(위 fmtSpan의 원칙).
+     견주는 상대는 고정된 50초가 아니라 내 최근 기록이다 — 레이스의 유령과 같다.
+     세션을 비우기 전에 꺼내 둔다. */
+  const ms = session.ms;
+  const ghost = session.ghostMs;
+  const isBest = session.isBest;
+  const goalMet = session.goalMet;
   const m = engine.mission(s, now());
   persist();
   quiz = null;
   session = null;
   againFn = startFuel;
   audio.win();
+  const rows = [
+    ['맞은 문제', `${correct} / ${total}`],
+    ['이번 판 시간', fmtSpan(ms)],
+  ];
+  /* 기록이 두 판 미만이면 견줄 상대가 없다. 그때만 목표를 대신 보여준다 —
+     견줄 것이 아무것도 없는 화면은 시간을 보여주는 의미가 없다. */
+  if (ghost != null) rows.push(['최근 기록', fmtSpan(ghost)]);
+  else rows.push(['목표', `${engine.FUEL_GOAL_MS / 1000}초`]);
+  rows.push(['오늘의 임무', `${[m.fuel, m.race, m.oral].filter(Boolean).length} / 3`]);
+  rows.push(['저금통', `${m.coins}원`]);
+  let kicker;
+  if (goalMet) kicker = '연료 50초 배지!';
+  else if (isBest) kicker = '내 최고 기록!';
+  else if (ghost != null && ms < ghost) kicker = '지난번보다 빨라졌어!';
+  else kicker = kind === 'diag' ? '진단' : '연료 채우기 끝';
   ui.showDone({
-    kicker: kind === 'diag' ? '진단' : '연료 채우기 끝',
+    kicker,
     title: correct === total ? '연료 가득!' : '연료를 채웠어요',
-    rows: [
-      ['맞은 문제', `${correct} / ${total}`],
-      ['오늘의 임무', `${[m.fuel, m.race, m.oral].filter(Boolean).length} / 3`],
-      ['저금통', `${m.coins}원`],
-    ],
+    rows,
     again: '한 번 더',
   });
 }

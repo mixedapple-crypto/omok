@@ -94,7 +94,7 @@ const doneBody = $('#done-body');
 const doneAgain = $('#done-again');
 const toastEl = $('#toast');
 
-const BADGE_ICON = { planet: '🪐', pair: '✦', perfect: '🚀', streak: '③', cert: '🎙️', chant36: '↶' };
+const BADGE_ICON = { planet: '🪐', pair: '✦', perfect: '🚀', fuel50: '⏱', streak: '③', cert: '🎙️', chant36: '↶' };
 const PLANET_CLASS = { stable: 'stable', now: 'working', far: 'dim' };
 const PLANET_WORD = { stable: '안정', now: '진행', far: '대기' };
 

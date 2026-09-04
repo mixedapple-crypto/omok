@@ -28,6 +28,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { installDom, installClock } from './gugudan-dom.js';
 import { ok, eq, report } from './_assert.js';
+import { BADGE_NAMES } from '../www/gugudan/js/engine.js'; // 배지 수를 손으로 적으면 배지가 늘 때마다 낡는다
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const GG = join(ROOT, 'www', 'gugudan');
@@ -68,7 +69,7 @@ function solveFuel() {
 // ── 1. 홈 ────────────────────────────────────────────────────────────────────
 eq('시작 화면은 홈', dom.screen(), 'home');
 eq('행성 8개', $('#planets').children.length, 8);
-eq('배지 6개', $('#badges').children.length, 6);
+eq('배지를 엔진이 아는 만큼 그린다', $('#badges').children.length, Object.keys(BADGE_NAMES).length);
 ok('오늘 날짜를 보여준다', /\d+월 \d+일 · .요일/.test($('#today-pill').textContent), $('#today-pill').textContent);
 ok('임무 3가지를 보여준다', ['연료 채우기', '레이스', '구두 카드'].every((s) => $('#mission-steps').textContent.includes(s)),
   $('#mission-steps').textContent);

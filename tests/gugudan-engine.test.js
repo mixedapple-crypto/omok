@@ -329,4 +329,99 @@ ok('시드 난수는 재현된다', E.makeRng(7)() === E.makeRng(7)());
   ok('이상한 기록은 거부', threw);
 }
 
+// ── 한 판의 시간·유령·50초 배지 ────────────────────────────────────────────────
+
+/* 답을 전부 틀리게 넣는다. 50초 배지가 속도만으로 뚫리는지 보는 데 쓴다. */
+const missAll = (state, session, now, ms) => {
+  while (!session.done) {
+    const id = E.sessionCurrent(session);
+    E.sessionAnswer(state, session, { value: E.fact(id).ans + 1, ms, fixed: false }, now);
+  }
+};
+
+{
+  const s = afterDiag(E.makeRng(31));
+  const first = E.buildSession(s, at(3), E.makeRng(32));
+  eq('진단 사흘 뒤에는 연료 채우기다', first.kind, 'fuel');
+  answerAll(s, first, at(3), () => 2500);
+  eq('한 판의 시간은 답 시간의 합이다', first.ms, 24 * 2500);
+  ok('연료 첫 판에는 유령이 없다', first.ghostMs === null);
+  ok('연료 첫 판은 최고 기록이 아니다', first.isBest === false);
+
+  const second = E.buildSession(s, at(4), E.makeRng(33));
+  answerAll(s, second, at(4), () => 2300);
+  ok('두 판째도 아직 유령이 없다(기록이 두 판 미만)', second.ghostMs === null);
+  ok('앞 판보다 빠르면 최고 기록이다', second.isBest === true);
+
+  const third = E.buildSession(s, at(5), E.makeRng(34));
+  answerAll(s, third, at(5), () => 2400);
+  /* 유령은 이번 판을 넣기 전에 센다. 넣고 나서 세면 이번 판이 자기 자신과 겨룬다. */
+  eq('유령은 앞선 두 판의 중간값', third.ghostMs, (24 * 2500 + 24 * 2300) / 2);
+  ok('진단 세 판은 연료의 유령에 섞이지 않는다', s.sessions.filter((r) => r.kind === 'diag').length === 3);
+  ok('앞 판보다 느리면 최고 기록이 아니다', third.isBest === false);
+}
+
+{
+  const s = afterDiag(E.makeRng(41));
+  const ses = E.buildSession(s, at(3), E.makeRng(42));
+  answerAll(s, ses, at(3), () => 1500); // 24 × 1.5초 = 36초
+  ok('빠르고 정확하면 연료 50초 배지를 받는다', ses.goalMet && s.fuel50Days.length === 1);
+  ok('배지 목록에 연료 50초가 올라온다',
+    E.badges(s).some((b) => b.key === 'fuel50' && b.earned && b.count === 1));
+}
+
+{
+  const s = afterDiag(E.makeRng(43));
+  const ses = E.buildSession(s, at(3), E.makeRng(44));
+  answerAll(s, ses, at(3), () => 3000); // 24 × 3초 = 72초
+  ok('느리면 배지가 없다', !ses.goalMet && s.fuel50Days.length === 0);
+}
+
+/*
+ * 실제로 재보고 막은 구멍이다. 오답은 다시 나오지만 한 사실당 4번에서 멈추므로 판이 140문제에서
+ * 그친다. 한 문제를 0.3초로 두드리면 42초라, 시간만 보면 배지가 뚫린다.
+ * (어림으로는 96문제라고 봤는데 채움 문제까지 붙어 140문제였다. 400ms로는 56초라 안 뚫린다.)
+ */
+{
+  const s = afterDiag(E.makeRng(45));
+  const ses = E.buildSession(s, at(3), E.makeRng(46));
+  missAll(s, ses, at(3), 300);
+  ok('전부 틀리면 판이 오히려 길어진다', ses.answered > 2 * E.SESSION_SIZE, `${ses.answered}문제`);
+  ok('빠르게 두드리면 시간만으로는 목표 안에 든다', ses.ms <= E.FUEL_GOAL_MS, `${ses.ms}ms`);
+  ok('정확도 문턱이 있어 배지는 안 준다', !ses.goalMet && s.fuel50Days.length === 0);
+}
+
+{
+  const s = afterDiag(E.makeRng(47));
+  for (let i = 0; i < 2; i++) answerAll(s, E.buildSession(s, at(3), E.makeRng(48 + i)), at(3), () => 1200);
+  eq('같은 날 두 판을 잘해도 배지는 하루치만 센다', s.fuel50Days.length, 1);
+}
+
+{
+  const s = E.newState();
+  const ses = E.buildSession(s, at(0), E.makeRng(51));
+  eq('맨 첫 판은 진단이다', ses.kind, 'diag');
+  answerAll(s, ses, at(0), () => 500);
+  ok('진단은 빨라도 배지를 주지 않는다', !ses.goalMet && s.fuel50Days.length === 0);
+}
+
+/* 배지 횟수는 학습 상태를 지워도 남는다(부모 화면의 "엔진 초기화"). */
+{
+  const s = afterDiag(E.makeRng(53));
+  answerAll(s, E.buildSession(s, at(3), E.makeRng(54)), at(3), () => 1200);
+  eq('초기화 전에 배지가 있다', s.fuel50Days.length, 1);
+  E.resetEngine(s);
+  eq('엔진 초기화 뒤에도 배지 횟수는 남는다', s.fuel50Days.length, 1);
+  eq('세션 기록은 지워진다', s.sessions.length, 0);
+}
+
+/* 옛 저장에는 fuel50Days가 없다. 불러오기가 기본값을 채우지 않으면 배지 화면이 죽는다. */
+{
+  const old = JSON.parse(E.exportState(E.newState()));
+  delete old.fuel50Days;
+  const s = E.importState(JSON.stringify(old));
+  eqArr('fuel50Days 없는 옛 저장도 빈 배열로 열린다', s.fuel50Days, []);
+  ok('그 상태로 배지를 그려도 죽지 않는다', E.badges(s).length === Object.keys(E.BADGE_NAMES).length);
+}
+
 report('gugudan-engine.test');
