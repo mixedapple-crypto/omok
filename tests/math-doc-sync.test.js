@@ -30,6 +30,12 @@ new Function('module', source)(mod);
 const { xpForLevel, foeMaxHP, PET_FORMS } = mod.exports;
 
 /** 코드에서 상수를 정규식으로 캐낸다. 못 찾으면 이름이 바뀐 것이므로 검사를 실패시킨다. */
+/** `이름 = [30, 50, ...]` 형태의 배열 상수를 소스에서 꺼낸다. */
+function arrOf(name) {
+  const m = new RegExp(`\\b${name}\\s*=\\s*\\[([^\\]]*)\\]`).exec(source);
+  return m ? m[1].split(',').map((x) => Number(x.trim())) : null;
+}
+
 function constOf(name) {
   const m = new RegExp(`\\b${name}\\s*=\\s*(\\d+)`).exec(source);
   return m ? Number(m[1]) : null;
@@ -88,17 +94,31 @@ claims('지침서의 "몇 번 틀리면 패배"가 체력과 오답 피해에서
 
 /* --- 용돈 --- */
 
-const Q1 = constOf('Q1_COIN');
-const Q2 = constOf('Q2_COIN');
-const QW = constOf('QW_COIN');
+/*
+ * 퀘스트 보상은 구역마다 다르고 세 퀘스트가 모두 같은 금액을 쓴다.
+ * 부모가 지급액을 잡는 근거라 구역별로 하나씩 문서와 대조한다.
+ */
+const QUEST_COIN = arrOf('QUEST_COIN');
 const QW_WINS = constOf('QW_WINS');
 
-ok('퀘스트 상수 네 개를 코드에서 찾았다', [Q1, Q2, QW, QW_WINS].every((v) => typeof v === 'number'),
-  `Q1=${Q1} Q2=${Q2} QW=${QW} QW_WINS=${QW_WINS}`);
+ok('구역별 퀘스트 보상과 주간 승수를 코드에서 찾았다',
+  Array.isArray(QUEST_COIN) && QUEST_COIN.length === 4 && QUEST_COIN.every((v) => Number.isFinite(v))
+    && typeof QW_WINS === 'number',
+  `QUEST_COIN=${QUEST_COIN} QW_WINS=${QW_WINS}`);
 
-claims('지침서의 일일 퀘스트 1 보상이 코드와 같다', '오늘 3판 이기기', `${Q1}원`);
-claims('지침서의 일일 퀘스트 2 보상이 코드와 같다', '별 세 개로 이기기', `${Q2}원`);
-claims('지침서의 주간 퀘스트 보상이 코드와 같다', `이번 주 ${QW_WINS}판 이기기`, `${QW}원`);
+(QUEST_COIN ?? []).forEach((coin, i) => {
+  claims(`지침서의 ${i + 1}구역 퀘스트 보상이 코드와 같다`, `| ${i + 1}구역 |`, `${coin}원`);
+});
+claims('지침서의 주간 퀘스트 승수가 코드와 같다', '이번 주', `${QW_WINS}판`);
+
+/* 주당 상한. 하루에 두 개 + 주에 하나이므로 7 × 2 × 금액 + 금액이다.
+   액수가 커져서 문서의 계산이 낡으면 부모가 지급액을 잘못 잡는다. */
+if (QUEST_COIN) {
+  const week = (z) => 7 * 2 * QUEST_COIN[z] + QUEST_COIN[z];
+  claims('지침서의 1구역 주당 퀘스트 상한이 코드와 맞는다', '주당', `${week(0)}원`);
+  claims('지침서의 4구역 주당 퀘스트 상한이 코드와 맞는다', '주당', `${week(3)}원`);
+  claims('지침서의 두 게임 합계 주당 상한이 코드와 맞는다', '두 게임을 합치면 주당', `${week(3) * 2}원`);
+}
 
 /* 별 3개 1회성 보너스. 액수가 커서 문서와 어긋나면 부모가 지급액을 잘못 잡는다. */
 const S3 = constOf('STAR3_COIN');

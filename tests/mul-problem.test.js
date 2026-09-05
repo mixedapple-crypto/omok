@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { ok, eq, report } from './_assert.js';
+import { ok, eq, eqArr, report } from './_assert.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const html = readFileSync(join(here, '..', 'www', 'mul', 'index.html'), 'utf8');
@@ -20,7 +20,8 @@ new Function('module', source)(mod);
 const { P, DP, genByType, genDiv, pickType, makeProblem, gridSteps, divSteps, stepsFor,
         foeMaxHP, MIX, ZONES, ANIMALS, STAGES, BOSS_TOTAL, withJosa, numJosa, PET_FORMS,
         isDiv, isWhole, isSplit, isQuotOnly, isProdOnly, isLateRem, isCarryShown, isDivStage,
-        TIME, STAGE_BONUS, timeFor, remCols, TYPES, HINTS, questZone, questCounts } = mod.exports;
+        TIME, STAGE_BONUS, timeFor, remCols, TYPES, HINTS, questZone, questCounts,
+        QUEST_COIN, questCoin, QW_WINS } = mod.exports;
 
 ok('스크립트에서 로직을 꺼냈다', typeof P === 'function' && typeof DP === 'function' && typeof stepsFor === 'function');
 
@@ -610,6 +611,34 @@ ok('별 3개 보너스는 처음 3개가 될 때만 나온다', /if\(stars===3&&
 ok('보스와 일반의 보너스 금액이 갈린다', /a\.boss\?STAR3_BOSS_COIN:STAR3_COIN/.test(source));
 ok('퀘스트 카드가 인정 구역을 적는다', /quest-zone/.test(source));
 
+/* ----- 구역별 퀘스트 보상 ----- */
+
+/*
+ * 퀘스트가 지금 구역에서만 세어지게 바뀌었으니 어려운 구역이 더 받는다(사용자가 정한 값).
+ * 세 퀘스트가 같은 금액을 쓰고, 금액은 이긴 판의 구역이 아니라 지금 인정 구역으로 정해진다.
+ */
+eqArr('구역별 퀘스트 보상', QUEST_COIN, [30, 50, 70, 90]);
+eq('구역 수와 금액 개수가 같다', QUEST_COIN.length, ZONES.length);
+ok('뒤 구역일수록 금액이 크다', QUEST_COIN.every((v, i) => i === 0 || v > QUEST_COIN[i - 1]), QUEST_COIN.join('/'));
+eq('아직 아무것도 못 깼으면 1구역 금액', questCoin(0), QUEST_COIN[0]);
+eq('13스테이지까지 깼으면 3구역 금액', questCoin(13), QUEST_COIN[2]);
+eq('전부 깨면 4구역 금액', questCoin(STAGES), QUEST_COIN[3]);
+{
+  let coinOk = true;
+  let coinBad = null;
+  for (let c = 0; c <= STAGES; c++) {
+    if (questCoin(c) !== QUEST_COIN[questZone(c)]) { coinOk = false; if (!coinBad) coinBad = `cleared=${c}`; }
+  }
+  ok('금액은 언제나 인정 구역의 값이다', coinOk, coinBad ?? '');
+}
+
+/* 화면 쪽은 DOM 블록 안이라 소스 형태로 본다. 한 곳만 옛 상수로 남으면 그 퀘스트만 금액이 다르다. */
+ok('세 퀘스트가 모두 같은 금액 변수를 쓴다', (source.match(/got\+=qc;/g) || []).length === 3,
+  String((source.match(/got\+=qc;/g) || []).length));
+ok('퀘스트 카드도 같은 금액을 적는다', /var qz=questZone\(S\.cleared\), qc=QUEST_COIN\[qz\];/.test(source));
+ok('지급 금액은 S.cleared를 올리기 전에 센다 (카드에 적힌 금액과 같아야 한다)',
+  /var qc=questCoin\(S\.cleared\);/.test(source));
+
 /* 금액은 숫자숲과 같아야 한다 — 두 게임의 용돈 체계가 같다는 것이 이 프로젝트의 약속이다. */
 {
   const num = (name) => Number(new RegExp(`\\b${name}\\s*=\\s*(\\d+)`).exec(source)[1]);
@@ -617,9 +646,13 @@ ok('퀘스트 카드가 인정 구역을 적는다', /quest-zone/.test(source));
   eq('보스 별 3개 보너스', num('STAR3_BOSS_COIN'), 1000);
   const mathSrc = readFileSync(join(here, '..', 'www', 'math', 'index.html'), 'utf8');
   const mnum = (name) => Number(new RegExp(`\\b${name}\\s*=\\s*(\\d+)`).exec(mathSrc)[1]);
+  const marr = (name) => new RegExp(`\\b${name}\\s*=\\s*\\[([^\\]]*)\\]`).exec(mathSrc)[1].split(',').map((x) => Number(x.trim()));
   eq('숫자숲과 일반 보너스가 같다', mnum('STAR3_COIN'), num('STAR3_COIN'));
   eq('숫자숲과 보스 보너스가 같다', mnum('STAR3_BOSS_COIN'), num('STAR3_BOSS_COIN'));
+  eqArr('숫자숲과 구역별 퀘스트 보상이 같다', marr('QUEST_COIN'), QUEST_COIN);
+  eq('숫자숲과 주간 승수가 같다', mnum('QW_WINS'), QW_WINS);
   ok('숫자숲도 같은 구역 규칙을 쓴다', /var counts=questCounts\(S\.cleared,B\.stage\);/.test(mathSrc));
+  ok('숫자숲도 같은 금액 계산을 쓴다', /var qc=questCoin\(S\.cleared\);/.test(mathSrc));
 }
 
 /* 별 초기화는 한 번만 돌아야 한다. 매번 돌면 아이가 모은 별이 날마다 지워진다. */

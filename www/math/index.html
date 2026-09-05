@@ -412,17 +412,30 @@ function petFormFor(lv){
 function questZone(cleared){ var n=ANIMALS.length; return Math.floor((Math.min(cleared+1,n)-1)/5); }
 function questCounts(cleared,stage){ return Math.floor((stage-1)/5)>=questZone(cleared)-1; }
 
+/*
+ * 구역별 퀘스트 보상(사용자가 정한 값). 세 퀘스트가 모두 같은 금액을 쓴다.
+ * 퀘스트가 지금 구역에서만 세어지게 바뀌었으니, 어려운 구역을 하는 아이가 더 받는 것이 앞뒤가 맞는다.
+ *
+ * ⚠️ 금액은 **판을 이긴 구역이 아니라 지금 인정 구역**(questZone)으로 정한다.
+ * 홈 화면 퀘스트 카드가 달성 전에 "+70원"이라고 적어 두는데, 이긴 구역으로 정하면 그 표시가 거짓이 된다.
+ * 그래서 win()에서도 S.cleared를 올리기 전에 센다 — 카드에 적힌 금액과 실제 지급이 같아야 한다.
+ */
+var QUEST_COIN=[30,50,70,90];
+var QW_WINS=15;
+function questCoin(cleared){ return QUEST_COIN[questZone(cleared)]; }
+
 if(typeof module!=='undefined'&&module.exports){
   module.exports={TYPES:TYPES,MIX:MIX,genByType:genByType,pickType:pickType,makeProblem:makeProblem,
     foeMaxHP:foeMaxHP,xpForLevel:xpForLevel,levelFromXp:levelFromXp,petFormFor:petFormFor,PET_FORMS:PET_FORMS,
-    ANIMALS:ANIMALS,ZONES:ZONES,questZone:questZone,questCounts:questCounts};
+    ANIMALS:ANIMALS,ZONES:ZONES,questZone:questZone,questCounts:questCounts,QUEST_COIN:QUEST_COIN,questCoin:questCoin,QW_WINS:QW_WINS};
 }
 
 /* ================= 저장 ================= */
 var KEY='numforest-v2';
 var S={v:0,coins:0,cleared:0,xp:0,dex:[],sound:true,daily:{date:'',wins:0,star3:0,q1:false,q2:false},week:{key:'',wins:0,qw:false},stats:{},wrongPool:[],wrongLog:[],stars:{}};
-/* 용돈 경제: 승리 +1원(보스 +5원, 재도전 0원) / 일일퀘 3승 +20원, 별3 승리 +20원 / 주간퀘 15승 +30원 — 주당 최대 약 330원 */
-var Q1_COIN=20,Q2_COIN=20,QW_COIN=30,QW_WINS=15;
+/* 용돈 경제: 승리 +1원(보스 +5원, 재도전 0원) / 퀘스트 세 개는 구역별 금액(위 QUEST_COIN).
+   1구역 30원부터 4구역 90원까지라, 매일 다 채우면 주당 450원(1구역)에서 1350원(4구역)이다.
+   여기에 별 3개 1회성 보너스(한 게임 8800원)가 더해진다. */
 /*
  * 별 3개 1회성 보너스(사용자가 정한 값). 일반 스테이지 300원, 보스 1000원.
  * 한 게임에 일반 16판 × 300 + 보스 4판 × 1000 = 8800원이라 주당 300원짜리 퀘스트보다 훨씬 크다.
@@ -504,11 +517,11 @@ if(typeof document!=='undefined'){(function(){
     $('coin-chip').textContent=S.coins;
     /* 어느 구역에서 이겨야 세어지는지 이름으로 알려 준다. 안 그러면 옛 판을 이겨도 숫자가
        안 올라가는 것이 고장으로 보인다. */
-    var qz=questZone(S.cleared);
-    $('quest-zone').textContent='📍 '+(qz>0?qz+'~':'')+(qz+1)+'구역에서 이긴 것만 세요';
-    questRow($('qr1'),S.daily.q1,'오늘 3판 이기기',Q1_COIN,' ('+Math.min(S.daily.wins,3)+'/3)');
-    questRow($('qr2'),S.daily.q2,'별 ⭐⭐⭐로 1번 이기기',Q2_COIN,'');
-    questRow($('qr3'),S.week.qw,'이번 주 '+QW_WINS+'번 이기기',QW_COIN,' ('+Math.min(S.week.wins,QW_WINS)+'/'+QW_WINS+')');
+    var qz=questZone(S.cleared), qc=QUEST_COIN[qz];
+    $('quest-zone').textContent='📍 '+(qz>0?qz+'~':'')+(qz+1)+'구역에서 이긴 것만 세요 · 한 개 '+qc+'원';
+    questRow($('qr1'),S.daily.q1,'오늘 3판 이기기',qc,' ('+Math.min(S.daily.wins,3)+'/3)');
+    questRow($('qr2'),S.daily.q2,'별 ⭐⭐⭐로 1번 이기기',qc,'');
+    questRow($('qr3'),S.week.qw,'이번 주 '+QW_WINS+'번 이기기',qc,' ('+Math.min(S.week.wins,QW_WINS)+'/'+QW_WINS+')');
     var pf=petForm();
     $('pet-face').textContent=pf.f;
     $('pet-name').textContent=pf.n;
@@ -731,9 +744,11 @@ if(typeof document!=='undefined'){(function(){
       questLines.push('🌟 별 ⭐⭐⭐ 첫 달성! <b>+'+starGot+'원</b>');
     }
     if(counts){
-      if(!S.daily.q1&&S.daily.wins>=3){S.daily.q1=true;got+=Q1_COIN;questLines.push('🎯 퀘스트 달성! 오늘 3판 승리 <b>+'+Q1_COIN+'원</b>');}
-      if(!S.daily.q2&&S.daily.star3>=1){S.daily.q2=true;got+=Q2_COIN;questLines.push('🎯 퀘스트 달성! 별 ⭐⭐⭐ 승리 <b>+'+Q2_COIN+'원</b>');}
-      if(!S.week.qw&&S.week.wins>=QW_WINS){S.week.qw=true;got+=QW_COIN;questLines.push('🏆 주간 퀘스트 달성! 이번 주 '+QW_WINS+'승 <b>+'+QW_COIN+'원</b>');}
+      /* 홈 화면 카드가 적어 둔 금액과 같아야 하므로 여기서도 S.cleared를 올리기 전에 센다. */
+      var qc=questCoin(S.cleared);
+      if(!S.daily.q1&&S.daily.wins>=3){S.daily.q1=true;got+=qc;questLines.push('🎯 퀘스트 달성! 오늘 3판 승리 <b>+'+qc+'원</b>');}
+      if(!S.daily.q2&&S.daily.star3>=1){S.daily.q2=true;got+=qc;questLines.push('🎯 퀘스트 달성! 별 ⭐⭐⭐ 승리 <b>+'+qc+'원</b>');}
+      if(!S.week.qw&&S.week.wins>=QW_WINS){S.week.qw=true;got+=qc;questLines.push('🏆 주간 퀘스트 달성! 이번 주 '+QW_WINS+'승 <b>+'+qc+'원</b>');}
     }
     S.coins+=got; S.xp+=5;
     /* 친구 구출은 보스전을 별 3개(무실수)로 이겼을 때만 */
