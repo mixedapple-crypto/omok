@@ -20,7 +20,7 @@ new Function('module', source)(mod);
 const { P, DP, genByType, genDiv, pickType, makeProblem, gridSteps, divSteps, stepsFor,
         foeMaxHP, MIX, ZONES, ANIMALS, STAGES, BOSS_TOTAL, withJosa, numJosa, PET_FORMS,
         isDiv, isWhole, isSplit, isQuotOnly, isProdOnly, isLateRem, isCarryShown, isDivStage,
-        TIME, STAGE_BONUS, timeFor, remCols, TYPES, HINTS } = mod.exports;
+        TIME, STAGE_BONUS, timeFor, remCols, TYPES, HINTS, questZone, questCounts } = mod.exports;
 
 ok('스크립트에서 로직을 꺼냈다', typeof P === 'function' && typeof DP === 'function' && typeof stepsFor === 'function');
 
@@ -555,5 +555,76 @@ ANIMALS.concat(PET_FORMS).forEach((x) => {
   if (withJosa(n, '을', '를') !== expect) josaOk = false;
 });
 ok('모든 적·펫 이름의 조사가 받침대로 붙는다', josaOk);
+
+/* ================= 퀘스트가 인정하는 구역 ================= */
+
+/*
+ * 재도전 승리는 용돈이 0원이지만 퀘스트 횟수에는 들어가서, 뒤 구역까지 간 아이가 1스테이지를
+ * 반복해 하루 퀘스트를 채울 수 있었다. 그래서 지금 구역과 그 바로 앞 구역만 센다(사용자 지시).
+ */
+eq('아직 아무것도 못 깼으면 1구역이 기준', questZone(0), 0);
+ok('그때 1스테이지는 인정된다', questCounts(0, 1));
+
+/* 13스테이지까지 깼으면 3구역(2)이 기준이고, 2·3구역만 세어진다. */
+eq('13스테이지까지 깼으면 3구역이 기준', questZone(13), 2);
+ok('1구역은 제외된다 — 이 개편이 막으려는 바로 그 경우', !questCounts(13, 1) && !questCounts(13, 5));
+ok('2구역은 인정된다(바로 앞 구역)', questCounts(13, 6) && questCounts(13, 10));
+ok('3구역은 인정된다(지금 구역)', questCounts(13, 11) && questCounts(13, 15));
+
+/*
+ * ⚠️ 구역 보스를 막 깬 날의 경계. cleared가 5·10·15면 "마지막으로 깬 구역"은 방금 끝낸 구역이라,
+ * 그 읽기로는 새로 열린 다음 구역 첫 판이 인정 밖이 된다. 그날 제일 열심히 한 판이 안 세어지는 셈이다.
+ * 그래서 기준을 "지금 열려 있는 다음 스테이지의 구역"으로 잡았다.
+ */
+eq('2구역 보스를 막 깬 순간의 기준 구역', questZone(10), 2);
+ok('새로 열린 11스테이지가 바로 인정된다', questCounts(10, 11));
+ok('그때 방금 끝낸 2구역도 인정된다', questCounts(10, 6));
+ok('그때 1구역은 제외된다', !questCounts(10, 5));
+
+/* 다 깬 뒤에도 기준은 마지막 구역에 머문다 — 21스테이지는 없으므로 STAGES에서 멈춘다. */
+eq('전부 깬 뒤의 기준 구역', questZone(STAGES), ZONES.length - 1);
+ok('다 깬 뒤 1·2구역은 제외', !questCounts(STAGES, 1) && !questCounts(STAGES, 6));
+ok('다 깬 뒤 3·4구역은 인정', questCounts(STAGES, 11) && questCounts(STAGES, 20));
+
+/* 모든 구역에서, 지금 구역과 앞 구역만 인정되는지 한 번에 훑는다. */
+{
+  let sweepOk = true;
+  let sweepBad = null;
+  for (let cleared = 0; cleared <= STAGES; cleared++) {
+    const z = questZone(cleared);
+    for (let st = 1; st <= STAGES; st++) {
+      const want = Math.floor((st - 1) / 5) >= z - 1;
+      if (questCounts(cleared, st) !== want) { sweepOk = false; if (!sweepBad) sweepBad = `cleared=${cleared} stage=${st}`; }
+    }
+  }
+  ok('모든 (깬 곳, 스테이지) 짝에서 규칙이 일정하다', sweepOk, sweepBad ?? '');
+}
+
+/*
+ * 아래 넷은 DOM 블록 안이라 단위 테스트가 못 본다. 소스에서 형태만 확인한다.
+ * 화면 쪽에서 조용히 빠지면 규칙은 멀쩡해 보이는데 아이만 손해를 본다.
+ */
+ok('승리 처리가 questCounts로 퀘스트를 가린다', /var counts=questCounts\(S\.cleared,B\.stage\);/.test(source));
+ok('퀘스트 증가가 counts 안에 들어 있다', /if\(counts\)\{\s*\n\s*S\.daily\.wins\+\+; S\.week\.wins\+\+;/.test(source));
+ok('별 3개 보너스는 처음 3개가 될 때만 나온다', /if\(stars===3&&starWas<3\)\{/.test(source));
+ok('보스와 일반의 보너스 금액이 갈린다', /a\.boss\?STAR3_BOSS_COIN:STAR3_COIN/.test(source));
+ok('퀘스트 카드가 인정 구역을 적는다', /quest-zone/.test(source));
+
+/* 금액은 숫자숲과 같아야 한다 — 두 게임의 용돈 체계가 같다는 것이 이 프로젝트의 약속이다. */
+{
+  const num = (name) => Number(new RegExp(`\\b${name}\\s*=\\s*(\\d+)`).exec(source)[1]);
+  eq('일반 스테이지 별 3개 보너스', num('STAR3_COIN'), 300);
+  eq('보스 별 3개 보너스', num('STAR3_BOSS_COIN'), 1000);
+  const mathSrc = readFileSync(join(here, '..', 'www', 'math', 'index.html'), 'utf8');
+  const mnum = (name) => Number(new RegExp(`\\b${name}\\s*=\\s*(\\d+)`).exec(mathSrc)[1]);
+  eq('숫자숲과 일반 보너스가 같다', mnum('STAR3_COIN'), num('STAR3_COIN'));
+  eq('숫자숲과 보스 보너스가 같다', mnum('STAR3_BOSS_COIN'), num('STAR3_BOSS_COIN'));
+  ok('숫자숲도 같은 구역 규칙을 쓴다', /var counts=questCounts\(S\.cleared,B\.stage\);/.test(mathSrc));
+}
+
+/* 별 초기화는 한 번만 돌아야 한다. 매번 돌면 아이가 모은 별이 날마다 지워진다. */
+ok('저장 형식 번호로 한 번만 초기화한다', /if\(S\.v!==SAVE_V\)\{ S\.stars=\{\}; S\.v=SAVE_V; save\(\); \}/.test(source));
+ok('초기화가 지우는 것은 별뿐이다 (cleared·coins는 안 건드린다)',
+  !/if\(S\.v!==SAVE_V\)\{[^}]*S\.cleared/.test(source) && !/if\(S\.v!==SAVE_V\)\{[^}]*S\.coins/.test(source));
 
 report('곱셈 바다 문제와 입력 순서');

@@ -175,6 +175,7 @@
     </div>
     <div class="quest">
       <div class="qt">🎯 용돈 퀘스트</div>
+      <div id="quest-zone" style="font-size:12px;color:var(--ink-soft);margin:2px 0 4px"></div>
       <div class="q-row" id="qr1"></div>
       <div class="q-row" id="qr2"></div>
       <div class="q-row" id="qr3"></div>
@@ -398,19 +399,52 @@ function petFormFor(lv){
   return PET_FORMS[PET_FORMS.length-1];
 }
 
+/* ================= 퀘스트가 인정하는 구역 =================
+ *
+ * 재도전 승리는 용돈이 0원이지만 **퀘스트 횟수에는 들어갔다.** 그래서 18스테이지까지 간 아이가
+ * 1스테이지를 세 번 반복해 하루 퀘스트를 채울 수 있었다. 지금 실력이 아니라 옛 실력으로 버는 셈이다.
+ * 그래서 퀘스트는 **지금 구역과 그 바로 앞 구역**에서 이긴 것만 센다(사용자 지시).
+ *
+ * ⚠️ 기준을 "마지막으로 깬 구역"이 아니라 "지금 여는 스테이지의 구역"으로 잡았다.
+ * 구역 보스를 막 깬 날은 cleared가 5·10·15여서 "마지막으로 깬 구역"이 방금 끝낸 구역이 된다.
+ * 그 읽기로는 새로 열린 다음 구역의 첫 판이 인정 밖이 되어, 그날 제일 열심히 한 판이 안 세어진다.
+ */
+function questZone(cleared){ var n=ANIMALS.length; return Math.floor((Math.min(cleared+1,n)-1)/5); }
+function questCounts(cleared,stage){ return Math.floor((stage-1)/5)>=questZone(cleared)-1; }
+
 if(typeof module!=='undefined'&&module.exports){
   module.exports={TYPES:TYPES,MIX:MIX,genByType:genByType,pickType:pickType,makeProblem:makeProblem,
-    foeMaxHP:foeMaxHP,xpForLevel:xpForLevel,levelFromXp:levelFromXp,petFormFor:petFormFor,PET_FORMS:PET_FORMS};
+    foeMaxHP:foeMaxHP,xpForLevel:xpForLevel,levelFromXp:levelFromXp,petFormFor:petFormFor,PET_FORMS:PET_FORMS,
+    ANIMALS:ANIMALS,ZONES:ZONES,questZone:questZone,questCounts:questCounts};
 }
 
 /* ================= 저장 ================= */
 var KEY='numforest-v2';
-var S={coins:0,cleared:0,xp:0,dex:[],sound:true,daily:{date:'',wins:0,star3:0,q1:false,q2:false},week:{key:'',wins:0,qw:false},stats:{},wrongPool:[],wrongLog:[],stars:{}};
+var S={v:0,coins:0,cleared:0,xp:0,dex:[],sound:true,daily:{date:'',wins:0,star3:0,q1:false,q2:false},week:{key:'',wins:0,qw:false},stats:{},wrongPool:[],wrongLog:[],stars:{}};
 /* 용돈 경제: 승리 +1원(보스 +5원, 재도전 0원) / 일일퀘 3승 +20원, 별3 승리 +20원 / 주간퀘 15승 +30원 — 주당 최대 약 330원 */
 var Q1_COIN=20,Q2_COIN=20,QW_COIN=30,QW_WINS=15;
+/*
+ * 별 3개 1회성 보너스(사용자가 정한 값). 일반 스테이지 300원, 보스 1000원.
+ * 한 게임에 일반 16판 × 300 + 보스 4판 × 1000 = 8800원이라 주당 300원짜리 퀘스트보다 훨씬 크다.
+ * 대신 스테이지마다 딱 한 번이고 반복해서 벌 수 없다.
+ *
+ * 지급 기록을 따로 두지 않는 이유: 별은 내려가지 않으므로(win에서 더 높을 때만 올린다)
+ * "처음 3이 되는 순간"이 정확히 한 번이다. 그래서 별을 리셋하면 보너스도 함께 다시 열린다.
+ */
+var STAR3_COIN=300, STAR3_BOSS_COIN=1000;
+/** 저장 형식 번호. 올리면 load()가 그 판에 맞춰 한 번 손을 본다. */
+var SAVE_V=2;
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 function load(){
   try{var raw=localStorage.getItem(KEY); if(raw){var d=JSON.parse(raw); for(var k in S){if(d[k]!==undefined)S[k]=d[k];}}}catch(e){}
+  /*
+   * 2026-09-04 별 전면 초기화(사용자 지시). 열린 스테이지(cleared)·저금통·도감·경험치는 그대로 두고
+   * 별만 지운다. 별 3개 보너스를 새로 만들면서, 이미 별 3개인 판은 영영 못 받게 되기 때문이다.
+   * 별을 지우는 것이 곧 보너스를 여는 일이라 두 가지를 따로 두지 않았다.
+   * ⚠️ 보스 자물쇠(그 구역 일반 4판을 전부 별 3개)도 함께 풀리지만, 이미 깬 보스는 cleared가
+   * 지켜 주므로 잠기지 않는다. 아직 안 깬 보스만 다시 별을 모아야 한다 — 그것이 이 개편의 목적이다.
+   */
+  if(S.v!==SAVE_V){ S.stars={}; S.v=SAVE_V; save(); }
 }
 function today(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
 function weekKey(){ /* 월요일 시작 주 */
@@ -468,6 +502,10 @@ if(typeof document!=='undefined'){(function(){
   function renderHome(){
     dailyCheck();
     $('coin-chip').textContent=S.coins;
+    /* 어느 구역에서 이겨야 세어지는지 이름으로 알려 준다. 안 그러면 옛 판을 이겨도 숫자가
+       안 올라가는 것이 고장으로 보인다. */
+    var qz=questZone(S.cleared);
+    $('quest-zone').textContent='📍 '+(qz>0?qz+'~':'')+(qz+1)+'구역에서 이긴 것만 세요';
     questRow($('qr1'),S.daily.q1,'오늘 3판 이기기',Q1_COIN,' ('+Math.min(S.daily.wins,3)+'/3)');
     questRow($('qr2'),S.daily.q2,'별 ⭐⭐⭐로 1번 이기기',Q2_COIN,'');
     questRow($('qr3'),S.week.qw,'이번 주 '+QW_WINS+'번 이기기',QW_COIN,' ('+Math.min(S.week.wins,QW_WINS)+'/'+QW_WINS+')');
@@ -672,16 +710,31 @@ if(typeof document!=='undefined'){(function(){
     var a=ANIMALS[B.stage-1];
     var stars=B.wrongTotal===0?3:(B.wrongTotal<=2?2:1);
     if(!S.stars)S.stars={};
+    var starWas=S.stars[B.stage]||0;   // 1회성 보너스를 가리려면 올리기 전 값이 필요하다
     if(!S.stars[B.stage]||stars>S.stars[B.stage])S.stars[B.stage]=stars;
     var lines='';
     dailyCheck();
-    S.daily.wins++; S.week.wins++;
-    if(stars===3)S.daily.star3++;
+    /* 퀘스트 횟수는 **지금 구역과 그 바로 앞 구역**에서 이긴 것만 센다(questCounts 주석 참조).
+       S.cleared를 올리기 전에 봐야 한다 — 새 스테이지를 깬 판은 언제나 지금 구역이다. */
+    var counts=questCounts(S.cleared,B.stage);
+    if(counts){
+      S.daily.wins++; S.week.wins++;
+      if(stars===3)S.daily.star3++;
+    }
     var got=B.isReplay?0:(a.boss?5:1);
     var questLines=[];
-    if(!S.daily.q1&&S.daily.wins>=3){S.daily.q1=true;got+=Q1_COIN;questLines.push('🎯 퀘스트 달성! 오늘 3판 승리 <b>+'+Q1_COIN+'원</b>');}
-    if(!S.daily.q2&&S.daily.star3>=1){S.daily.q2=true;got+=Q2_COIN;questLines.push('🎯 퀘스트 달성! 별 ⭐⭐⭐ 승리 <b>+'+Q2_COIN+'원</b>');}
-    if(!S.week.qw&&S.week.wins>=QW_WINS){S.week.qw=true;got+=QW_COIN;questLines.push('🏆 주간 퀘스트 달성! 이번 주 '+QW_WINS+'승 <b>+'+QW_COIN+'원</b>');}
+    /* 별 3개 1회성 보너스. 구역 제한을 두지 않는다 — 스테이지마다 한 번뿐이라 반복해서 벌 수 없고,
+       옛 구역을 별 3개로 다시 깨는 것은 오히려 시키고 싶은 일이다. */
+    if(stars===3&&starWas<3){
+      var starGot=a.boss?STAR3_BOSS_COIN:STAR3_COIN;
+      got+=starGot;
+      questLines.push('🌟 별 ⭐⭐⭐ 첫 달성! <b>+'+starGot+'원</b>');
+    }
+    if(counts){
+      if(!S.daily.q1&&S.daily.wins>=3){S.daily.q1=true;got+=Q1_COIN;questLines.push('🎯 퀘스트 달성! 오늘 3판 승리 <b>+'+Q1_COIN+'원</b>');}
+      if(!S.daily.q2&&S.daily.star3>=1){S.daily.q2=true;got+=Q2_COIN;questLines.push('🎯 퀘스트 달성! 별 ⭐⭐⭐ 승리 <b>+'+Q2_COIN+'원</b>');}
+      if(!S.week.qw&&S.week.wins>=QW_WINS){S.week.qw=true;got+=QW_COIN;questLines.push('🏆 주간 퀘스트 달성! 이번 주 '+QW_WINS+'승 <b>+'+QW_COIN+'원</b>');}
+    }
     S.coins+=got; S.xp+=5;
     /* 친구 구출은 보스전을 별 3개(무실수)로 이겼을 때만 */
     var notYet=a.boss&&S.dex.indexOf(B.stage)<0;
@@ -698,6 +751,7 @@ if(typeof document!=='undefined'){(function(){
     lines+='⭐ 경험치 +'+(B.corrects+5)+'<br>';
     var qi;
     for(qi=0;qi<questLines.length;qi++)lines+=questLines[qi]+'<br>';
+    if(!counts)lines+='📍 지난 구역이라 퀘스트에는 안 세어져. 지금 구역에서 이겨 보자!<br>';
     if(missedRescue)lines+='💫 별 ⭐⭐⭐로 다시 도전하면 친구가 돼!<br>';
     else if(stars<3)lines+='한 번도 안 틀리면 별 3개! 🌟<br>';
     if(newFriend)lines+='📖 친구 도감에 '+a.n+' 등록!';
