@@ -80,12 +80,14 @@
         </div>
         <div class="badges" id="badges"></div>
       </section>
-    </div>
 
-    <button class="parent-lock" id="parent-lock" aria-label="부모 화면 — 3초 길게 누르기">
-      <span aria-hidden="true">🔒</span>
-      <i id="lock-ring"></i>
-    </button>
+      <!-- 부모 화면 입구. 숫자숲·곱셈 바다와 같은 방식이다 — 눈에 보이는 버튼으로 두고
+           아이는 관문(17 × 23)이 막는다. 예전에는 구석의 🔒을 3초 눌러야 했는데,
+           아이가 못 찾는 만큼 부모도 못 찾았다(사용자가 "부모인증 모드가 없다"고 짚었다). -->
+      <section class="home-foot">
+        <button class="foot-btn" data-action="go-parent">📊 부모님</button>
+      </section>
+    </div>
   </section>
 
   <!-- ── 연료 채우기 ───────────────────────────────────────────────── -->
@@ -295,7 +297,17 @@
       </div>
     </header>
 
-    <main class="parent-content">
+    <!-- 관문. 네 게임이 같은 문제를 쓴다 — 부모가 답 하나만 외우면 어디서나 통한다. -->
+    <section class="parent-gate" id="parent-gate">
+      <p class="gate-q">어른인지 확인할게요! <b>17 × 23</b> = ?</p>
+      <div class="gate-row">
+        <input class="gate-in" id="gate-in" inputmode="numeric" maxlength="4" aria-label="정답 입력">
+        <button class="gate-ok" id="gate-ok">확인</button>
+      </div>
+      <p class="gate-msg" id="gate-msg" aria-live="polite"></p>
+    </section>
+
+    <main class="parent-content" id="parent-content" hidden>
       <nav class="tabbar" id="parent-tabs" aria-label="기록 보기 전환">
         <button class="tab" data-view="acc">정확도</button>
         <button class="tab active" data-view="time">답 시간</button>
@@ -361,7 +373,7 @@
   <!-- ── 구두 인증 ─────────────────────────────────────────────────── -->
   <section class="screen screen-cert space">
     <header class="training-head">
-      <button class="back" data-action="go-parent" aria-label="관제실로">‹</button>
+      <button class="back" data-action="back-parent" aria-label="관제실로">‹</button>
       <div class="screen-name">구두 인증</div>
       <div class="counter" id="cert-counter">0 / 72</div>
     </header>

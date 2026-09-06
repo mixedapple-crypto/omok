@@ -15,7 +15,7 @@
  *   3. 레이스 — 항로 목록·잠긴 세트, 오답도 재입력 없이 다음, 로켓 위치, 유령 로켓과 끄기
  *   4. 구두 카드 10장, 임무 셋을 다 하면 용돈 30원(하루 한 번)
  *   5. 거꾸로 암송 — 연습 박자 완주, 측정 실패/통과(36초)
- *   6. 부모 관제실 — 3초 길게 누르기, 격자·탭, 두 번 눌러 지급/초기화, 내보내기·가져오기
+ *   6. 부모 관제실 — 부모님 버튼 + 17 × 23 관문, 격자·탭, 두 번 눌러 지급/초기화, 내보내기·가져오기
  *   7. 구두 인증 72장 — 실패 경로와 통과 경로
  *
  * 무작위는 시드로 고정한다. app.js는 `Math.random()`으로 rng 시드를 뽑고 엔진도 재출제 간격에
@@ -365,17 +365,32 @@ eq('거꾸로 36초 배지가 켜진다', engine.badges(store.get()).find((b) =>
 dom.click('go-home');
 
 // ── 6. 부모 관제실 ───────────────────────────────────────────────────────────
-// 짧게 누르면 아무 일도 없다
-dom.fire($('#parent-lock'), 'pointerdown');
-dom.fire($('#parent-lock'), 'pointerup');
-clock.advance(3100);
-eq('짧게 누르면 부모 화면이 안 열린다', dom.screen(), 'home');
-// 3초 길게 누르면 열린다
-dom.fire($('#parent-lock'), 'pointerdown');
-clock.advance(2900);
-eq('3초가 되기 전에는 안 열린다', dom.screen(), 'home');
-clock.advance(200);
-eq('3초 길게 누르면 부모 화면', dom.screen(), 'parent');
+/*
+ * 입구는 숫자숲·곱셈 바다와 같다: 홈의 "📊 부모님" 버튼을 누르고 17 × 23을 푼다.
+ * 예전에는 구석의 흐린 🔒을 3초 눌러야 했는데, 아이가 못 찾는 만큼 부모도 못 찾았다
+ * (사용자가 "구구단에 부모인증 모드가 없네"라고 짚어 발견했다).
+ */
+dom.click('go-parent');
+eq('부모님 버튼을 누르면 부모 화면', dom.screen(), 'parent');
+ok('관문이 서 있다', !$('#parent-gate').hidden);
+ok('통과 전에는 관제실 내용이 감춰진다', $('#parent-content').hidden);
+/* 감추기만 하면 관문이 눈가림이 된다. 통과 전에는 아예 그리지 않는지 본다. */
+eq('통과 전에는 격자를 그리지도 않는다', $('#matrix-body').children.length, 0);
+
+$('#gate-in').value = '390';
+dom.fire($('#gate-ok'), 'click');
+ok('틀린 답으로는 안 열린다', $('#parent-content').hidden && !$('#parent-gate').hidden);
+ok('틀렸다고 말해 준다', $('#gate-msg').textContent.length > 0, $('#gate-msg').textContent);
+eq('틀린 답은 지워 준다', $('#gate-in').value, '');
+
+$('#gate-in').value = '391';
+dom.fire($('#gate-ok'), 'click');
+eq('맞히면 부모 화면 그대로', dom.screen(), 'parent');
+ok('관문이 걷히고 내용이 나온다', $('#parent-gate').hidden && !$('#parent-content').hidden);
+
+/* 인증 화면에서 관제실로 돌아올 때는 관문을 다시 세우지 않는다 — 이미 통과한 사람이다. */
+dom.click('back-parent');
+ok('돌아올 때 관문이 다시 서지 않는다', $('#parent-gate').hidden && !$('#parent-content').hidden);
 
 eq('격자가 8행', $('#matrix-body').children.length, 8);
 eq('한 행은 머리 + 9칸', $('#matrix-body').children[0].children.length, 10);
@@ -448,7 +463,8 @@ eq('제대로 된 문자열은 가져온다', $('#io-note').textContent, '가져
 dom.click('cert-start');
 eq('인증 화면', dom.screen(), 'cert');
 eq('인증 0 / 72', $('#cert-counter').textContent, '0 / 72');
-ok('인증 화면의 뒤로는 관제실로 간다', $('.screen-cert [data-action="go-parent"]') !== null);
+// 인증에서 나가는 길은 back-parent 다 — go-parent 로 두면 관문을 다시 만난다
+ok('인증 화면의 뒤로는 관제실로 간다', $('.screen-cert [data-action="back-parent"]') !== null);
 dom.click('cert-wrong');
 dom.click('cert-miss');
 dom.click('cert-fix');
@@ -464,11 +480,12 @@ eq('인증 기록은 남는다', store.get().certLog.length, 1);
   eq('수정이 기록된다', c.corrections, 1);
 }
 
-/** 부모 화면으로 다시 들어간다(3초 길게 누르기). */
+/** 부모 화면으로 다시 들어간다. 홈을 거쳐 들어오면 관문을 다시 통과해야 한다. */
 function reopenParent() {
   dom.click('go-home');
-  dom.fire($('#parent-lock'), 'pointerdown');
-  clock.advance(3000);
+  dom.click('go-parent');
+  $('#gate-in').value = '391';
+  dom.fire($('#gate-ok'), 'click');
 }
 
 // '못 함'만 하나 있어도 통과가 아니다 — 틀림과 따로 세지만 막는 힘은 같다

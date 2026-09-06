@@ -20,7 +20,11 @@ const stageName = $('#stage-name');
 const planetsBox = $('#planets');
 const badgeCount = $('#badge-count');
 const badgesBox = $('#badges');
-const parentLock = $('#parent-lock');
+const parentGate = $('#parent-gate');
+const parentContent = $('#parent-content');
+const gateIn = $('#gate-in');
+const gateOk = $('#gate-ok');
+const gateMsg = $('#gate-msg');
 
 // 연료 채우기
 const fuelCounter = $('#fuel-counter');
@@ -170,25 +174,39 @@ export function setBadges(list) {
 }
 
 /**
- * 부모 잠금 버튼 — 3초 길게 눌러야 열린다. 짧게 누르면 아무 일도 없다.
- * pointerdown에서 재고 pointerup·cancel·leave에서 취소한다(오디오 잠금 해제와는 무관하다).
+ * 부모 화면 관문. 숫자숲·곱셈 바다와 같은 방식이다.
+ *
+ * ⚠️ 통과하기 전에는 내용을 **그리지도 않는다.** 화면에만 안 보이게 하면 기록이 DOM에 들어가
+ * 있어서, 관문이 눈가림이 된다. 그래서 app.js가 통과한 뒤에야 renderParent를 부른다.
+ *
+ * 열 때마다 다시 잠근다. 한 번 통과했다고 다음에 그냥 열리면 관문이 아니다.
  */
-export function onParentLock(ms, handler) {
-  let timer = 0;
-  const stop = () => {
-    if (timer) clearTimeout(timer);
-    timer = 0;
-    parentLock.classList.remove('holding');
+export function lockParent() {
+  parentGate.hidden = false;
+  parentContent.hidden = true;
+  gateIn.value = '';
+  gateMsg.textContent = '';
+}
+
+/** 관문을 통과한 상태로 둔다(인증 화면에서 관제실로 돌아올 때). */
+export function unlockParent() {
+  parentGate.hidden = true;
+  parentContent.hidden = false;
+}
+
+export function onGate(answer, handler) {
+  const check = () => {
+    if (gateIn.value.trim() === String(answer)) {
+      unlockParent();
+      handler();
+    } else {
+      gateMsg.textContent = '앗, 다시 계산해 보세요!';
+      gateIn.value = '';
+    }
   };
-  parentLock.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    stop();
-    parentLock.classList.add('holding');
-    timer = setTimeout(() => { stop(); handler(); }, ms);
-  });
-  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
-    parentLock.addEventListener(ev, stop);
-  }
+  gateOk.addEventListener('click', check);
+  // 숫자판이 아니라 기기 자판으로 넣으므로 엔터로도 확인되게 둔다.
+  gateIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
 }
 
 // ── 문제 화면 (연료 채우기 · 레이스 공용) ────────────────────────────────────

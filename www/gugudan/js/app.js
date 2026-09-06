@@ -17,8 +17,12 @@ import * as audio from './audio.js';
 const GOOD_MS = 300;
 /** 오답일 때 정답을 보여주는 시간. 아이가 읽고 그대로 따라 칠 만큼만. */
 const SHOW_MS = 1200;
-/** 부모 화면을 여는 길게 누르기. 아이가 우연히 열지 못할 만큼 길어야 한다. */
-const LOCK_MS = 3000;
+/**
+ * 부모 화면 관문의 답(17 × 23). 숫자숲·곱셈 바다와 **같은 문제**를 쓴다 —
+ * 부모가 답 하나만 외우면 네 게임 어디서나 통한다.
+ * 아홉 살에게는 두 자리 × 두 자리라 구구단 훈련만으로는 풀리지 않는다.
+ */
+const GATE_ANSWER = 391;
 /** 두 번 눌러 확인하는 버튼이 다시 잠기기까지. */
 const ARM_MS = 3000;
 /** 암송 연습에서 답을 비추기 시작하는 지점(박자 대비). 먼저 스스로 말할 틈을 준다. */
@@ -599,8 +603,16 @@ const VIEW_NOTE = {
   last: '마지막으로 나온 지 며칠 지났는지입니다. 5일이 넘지 않게 엔진이 채워 넣습니다.',
 };
 
+/** 홈에서 들어가는 입구. 언제나 관문부터다 — 통과해야 renderParent가 돈다. */
 function openParent() {
   ui.hideDone();
+  ui.lockParent();
+  ui.setScreen('parent');
+}
+
+/** 인증 화면에서 관제실로 돌아오기. 이미 통과한 뒤이므로 관문을 다시 세우지 않는다. */
+function backToParent() {
+  ui.unlockParent();
   renderParent();
   ui.setScreen('parent');
 }
@@ -699,6 +711,7 @@ const ACTIONS = {
   'go-chant': openChant,
   'go-home': goHome,
   'go-parent': openParent,
+  'back-parent': backToParent,
 
   'oral-reveal': () => { if (oral) ui.setOralRevealed(engine.fact(oral.items[oral.pos]).ans); },
   'oral-right': () => answerOral(true),
@@ -770,7 +783,7 @@ function init() {
   ui.onRaceSet(startRace);
   ui.onChantPace(pickPace);
   ui.onParentTab((v) => { parentView = v; renderParent(); });
-  ui.onParentLock(LOCK_MS, openParent);
+  ui.onGate(GATE_ANSWER, renderParent);
 
   // 오디오 잠금은 **사용자 활성화를 주는 이벤트**에서만 풀린다(audio.js 주석 참조).
   // 손가락 pointerdown은 활성화를 주지 않으므로 여기에 걸면 iOS에서 조용히 무음이 된다.

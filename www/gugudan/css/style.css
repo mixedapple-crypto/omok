@@ -233,18 +233,29 @@ button:active { transform: scale(.98); }
 }
 .badge.locked { opacity: .38; filter: grayscale(.65); }
 
-.parent-lock {
-  position: absolute; right: 18px; bottom: max(16px, env(safe-area-inset-bottom));
-  display: grid; place-items: center;
-  width: var(--tap); height: var(--tap);
-  border-radius: 19px;
-  background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.22);
-  color: #fff; font-size: 25px;
-  overflow: hidden;
+/* 홈 맨 아래의 부모 화면 입구. 아이 버튼(.go)보다 조용하게 두되 글자는 읽히게 둔다. */
+.home-foot { margin-top: 18px; display: flex; justify-content: center; }
+.foot-btn {
+  min-height: var(--tap); padding: 10px 22px; border-radius: 18px;
+  background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.18);
+  color: #cfc9e8; font-size: clamp(14px, 2vw, 16px); font-weight: 800;
 }
-/* 3초 길게 누르는 동안 차오르는 띠. 짧게 누르면 아무 일도 없다는 걸 눈으로 알린다. */
-#lock-ring { position: absolute; left: 0; bottom: 0; height: 4px; width: 0; background: var(--yellow); transition: none; }
-.parent-lock.holding #lock-ring { width: 100%; transition: width 3s linear; }
+
+/* 부모 화면 관문. 통과하기 전에는 .parent-content가 아예 그려지지 않는다. */
+.parent-gate { padding: clamp(28px, 6vw, 48px) var(--pad-x); text-align: center; }
+.gate-q { font-size: clamp(16px, 2.4vw, 19px); font-weight: 800; }
+.gate-q b { font-family: "Jua", sans-serif; font-weight: 400; font-size: 1.3em; }
+.gate-row { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
+.gate-in {
+  width: 130px; min-height: var(--tap); text-align: center;
+  font: inherit; font-size: 22px; font-weight: 800;
+  border: 2px solid #cfc7e4; border-radius: 14px; background: #fff; color: var(--ink);
+}
+.gate-ok {
+  min-height: var(--tap); padding: 0 22px; border-radius: 14px;
+  background: var(--space); color: #fff; font-size: 16px; font-weight: 900;
+}
+.gate-msg { margin-top: 14px; min-height: 22px; color: #b0343f; font-weight: 800; }
 
 /* ── 훈련 공통 머리 ──────────────────────────────────────────────── */
 .training-head {
@@ -671,5 +682,4 @@ button:active { transform: scale(.98); }
 
 @media (prefers-reduced-motion: reduce) {
   .progress-fill, .mini-rocket, .answer-box { transition: none; }
-  .parent-lock.holding #lock-ring { transition: none; width: 100%; }
 }
