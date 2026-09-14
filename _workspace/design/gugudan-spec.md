@@ -58,8 +58,9 @@ export function newState();                  // → 새 상태(아래 4절)
 export function factStats(state, id, now);   // → { acc3, median3, max3, seen, lastDay, daysSince }  (ms 단위, 없으면 null)
 export function isMastered(state, id);       // acc3===3 && median3<=1500 && max3<=2500
 export function danStable(state, dan);       // 그 단 9개 전부 acc3===3 && median3<=2000
-export function stage(state, now);           // → { no:0|1|2|3|4, name, detail }   name: '진단'|'단별 안정'|'혼합'|'구두 인증'|'거꾸로 도전'
-export function planets(state);              // → [{ dan, status:'stable'|'now'|'far' }]  now = 안정 안 된 첫 단
+export function stage(state, now);           // → { no:0|1|2|3|4, name, detail, goal }   name: '진단'|'단별 안정'|'혼합'|'구두 인증'|'거꾸로 도전'
+//   detail = 진행도("0 / 8 단 안정"), goal = 다음 단계로 가는 조건을 아이에게 하는 말. 둘 다 홈의 행성 지도에 그린다(임무 제목 자리가 아니다).
+export function planets(state);              // → [{ dan, ok:0..9, status:'stable'|'working'|'idle' }]  ok = 그 단에서 안정 기준을 채운 문제 수
 export function badges(state);               // → [{ key, name, earned, count }] key: planet|pair|perfect|fuel50|streak|cert|chant36
 export function parentGrid(state, view, now);// view 'acc'|'time'|'last' → [{ dan, cells:[{ id, value, level:0..3, label }] }]  (8행×9열)
 export function confusionList(state);        // → [{ a, b, count, phase:'apart'|'contrast'|'done' }]

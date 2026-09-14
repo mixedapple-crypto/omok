@@ -18,6 +18,8 @@ const homeFuelBar = $('#home-fuel-bar');
 const homeFuelCount = $('#home-fuel-count');
 const stageName = $('#stage-name');
 const planetsBox = $('#planets');
+const worldGoal = $('#world-goal');
+const worldProgress = $('#world-progress');
 const badgeCount = $('#badge-count');
 const badgesBox = $('#badges');
 const parentGate = $('#parent-gate');
@@ -99,8 +101,7 @@ const doneAgain = $('#done-again');
 const toastEl = $('#toast');
 
 const BADGE_ICON = { planet: '🪐', pair: '✦', perfect: '🚀', fuel50: '⏱', streak: '③', cert: '🎙️', chant36: '↶' };
-const PLANET_CLASS = { stable: 'stable', now: 'working', far: 'dim' };
-const PLANET_WORD = { stable: '안정', now: '진행', far: '대기' };
+const PLANET_CLASS = { stable: 'stable', working: 'working', idle: 'dim' };
 
 function el(tag, className, text) {
   const e = document.createElement(tag);
@@ -128,8 +129,9 @@ export function setToday(date) {
  * @param {{fuel:boolean,race:boolean,oral:boolean,done:boolean,paid:boolean,coins:number}} mission
  */
 export function setMission(stage, mission) {
-  missionTitle.textContent = stage.detail || stage.name;
   stageName.textContent = `${stage.no}단계 · ${stage.name}`;
+  worldGoal.textContent = stage.goal;
+  worldProgress.textContent = `지금 ${stage.detail}`;
 
   missionSteps.textContent = '';
   const steps = [['연료 채우기', mission.fuel], ['레이스', mission.race], ['구두 카드', mission.oral]];
@@ -139,6 +141,8 @@ export function setMission(stage, mission) {
   });
 
   const n = steps.filter(([, d]) => d).length;
+  // 큰 제목은 임무 자체를 말한다. 예전에는 단계 진행도("0 / 8 단 안정")가 여기 떠서 그게 임무처럼 읽혔다.
+  missionTitle.textContent = n === steps.length ? '오늘 임무 완료!' : `${steps.length - n}가지 남았어요`;
   homeFuelBar.style.width = pct(n / 3);
   homeFuelCount.textContent = `${n} / 3`;
   homeFuelPercent.textContent = `${Math.round((n / 3) * 100)}% 충전`;
@@ -149,13 +153,13 @@ export function setMission(stage, mission) {
   rewardText.closest('.reward').classList.toggle('paid', !!mission.paid);
 }
 
-/** @param {Array<{dan:number,status:'stable'|'now'|'far'}>} list */
+/** @param {Array<{dan:number,ok:number,status:'stable'|'working'|'idle'}>} list */
 export function setPlanets(list) {
   planetsBox.textContent = '';
   for (const p of list) {
     const item = el('div', 'planet-item');
     item.appendChild(el('div', `planet ${PLANET_CLASS[p.status] || 'dim'}`, String(p.dan)));
-    item.appendChild(document.createTextNode(PLANET_WORD[p.status] || ''));
+    item.appendChild(document.createTextNode(p.status === 'stable' ? '안정' : `${p.ok}/9`));
     planetsBox.appendChild(item);
   }
 }

@@ -200,6 +200,8 @@ button:active { transform: scale(.98); }
 .fuel-row .progress-track { flex: 1; }
 .fuel-count { font-size: clamp(15px, 2.2vw, 18px); font-weight: 900; color: var(--pink); }
 
+.world-goal { margin: -4px 0 16px; color: #655d84; font-size: clamp(14px, 2.1vw, 17px); font-weight: 700; line-height: 1.55; word-break: keep-all; }
+.world-goal b { color: var(--violet); font-weight: 900; white-space: nowrap; }
 .planets { display: grid; grid-template-columns: repeat(8, 1fr); gap: clamp(5px, 1.3vw, 11px); }
 .planet-item { text-align: center; font-size: clamp(12px, 1.9vw, 16px); font-weight: 900; }
 .planet {

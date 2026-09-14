@@ -73,7 +73,7 @@ for (let d = 0; d < DAYS; d++) {
   }
   // 레이스: 지금 가야 할 단, 열려 있으면 전체 무작위.
   const sets = E.raceSets(s);
-  const nowDan = E.planets(s).find((p) => p.status === 'now')?.dan ?? 9;
+  const nowDan = E.planets(s).find((p) => p.status !== 'stable')?.dan ?? 9;
   const key = sets.find((x) => x.key === 'all-random')?.available && d % 2 ? 'all-random' : `dan-${nowDan}`;
   const race = E.buildRace(s, key, rng);
   let total = 0;

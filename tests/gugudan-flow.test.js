@@ -75,6 +75,11 @@ ok('임무 3가지를 보여준다', ['연료 채우기', '레이스', '구두 �
   $('#mission-steps').textContent);
 eq('임무 진행 0 / 3', $('#home-fuel-count').textContent, '0 / 3');
 ok('1단계는 진단', $('#stage-name').textContent.includes('진단'), $('#stage-name').textContent);
+// 큰 제목은 임무를 말하고, 단계 진행도와 그 설명은 행성 지도에 있다(진행도가 제목에 떠서 임무처럼 읽혔다).
+eq('큰 제목은 남은 임무 수', $('#mission-title').textContent, '3가지 남았어요');
+ok('행성 지도에 단계 설명이 있다', $('#world-goal').textContent.includes('72문제를 한 번씩'), $('#world-goal').textContent);
+eq('행성 지도에 진행도가 있다', $('#world-progress').textContent, '지금 0 / 72 진단');
+eq('기록 없는 행성은 0/9', $('#planets').children[0].textContent, '20/9');
 
 // ── 2. 연료 채우기 ───────────────────────────────────────────────────────────
 dom.click('go-fuel');
@@ -231,6 +236,7 @@ eq('홈으로 돌아온다', dom.screen(), 'home');
 ok('결과 카드는 닫혔다', $('#done-overlay').hidden);
 ok('홈 임무에 연료 체크', $('#mission-steps').textContent.includes('✓ 연료 채우기'), $('#mission-steps').textContent);
 eq('임무 진행 1 / 3', $('#home-fuel-count').textContent, '1 / 3');
+eq('큰 제목이 남은 임무를 줄인다', $('#mission-title').textContent, '2가지 남았어요');
 eq('아직 용돈은 없다', store.get().allowance.coins, 0);
 
 // ── 3. 레이스 ────────────────────────────────────────────────────────────────
@@ -304,6 +310,7 @@ eq('구두 기록이 남았다', store.get().oralLog.length, 1);
 dom.click('go-home');
 eq('임무 셋을 다 하면 용돈 30원', store.get().allowance.coins, 30);
 eq('임무 진행 3 / 3', $('#home-fuel-count').textContent, '3 / 3');
+eq('임무를 다 하면 큰 제목이 완료', $('#mission-title').textContent, '오늘 임무 완료!');
 ok('홈 보상 문구가 지급으로 바뀐다', $('#reward-text').textContent.includes('30원 받았어요'), $('#reward-text').textContent);
 // 하루 한 번 — 홈을 다시 그려도 더 들어오지 않아야 한다
 dom.click('go-fuel');

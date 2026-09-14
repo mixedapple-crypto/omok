@@ -147,10 +147,21 @@ ok('시드 난수는 재현된다', E.makeRng(7)() === E.makeRng(7)());
   }
   ok('5단 안정', E.danStable(s, 5));
   ok('4단은 아직', !E.danStable(s, 4));
+  // 3단은 4문제만 기준을 채웠다. 하나는 3번을 맞혔지만 2번이 2초를 넘어 안 센다.
+  for (let b = 1; b <= 5; b++) {
+    const ms = b === 5 ? [2100, 2400, 1000] : [1000, 1900, 2600];
+    for (const m of ms) s.facts[`3x${b}`].hist.push({ day: '2026-09-03', ms: m, ok: true, fixed: false });
+  }
   const p = E.planets(s);
   eq('5단 행성은 안정', p.find((x) => x.dan === 5).status, 'stable');
-  eq('2단이 지금 갈 행성', p[0].status, 'now');
-  eq('3단은 대기', p[1].status, 'far');
+  eq('안정한 행성은 9/9', p.find((x) => x.dan === 5).ok, 9);
+  eq('3단은 네 문제만 센다(세 번 중 두 번이 2초 안)', p.find((x) => x.dan === 3).ok, 4);
+  eq('3단은 진행 중', p.find((x) => x.dan === 3).status, 'working');
+  eq('기록 없는 2단은 0/9', p[0].ok, 0);
+  eq('2단은 아직 시작 전', p[0].status, 'idle');
+  // 단계 설명: 기준 숫자를 상수에서 만든다.
+  const st = E.stage(E.newState(), T0);
+  ok('진단 단계 설명', st.goal.includes('72문제를 한 번씩'), st.goal);
   eq('행성 배지 1개', E.badges(s).find((b) => b.key === 'planet').count, 1);
 }
 

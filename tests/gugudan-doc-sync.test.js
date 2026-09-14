@@ -49,6 +49,16 @@ claims('혼동쌍 대비 조건 날 수', '서로 다른 2일에 정확하고 �
 claims('숙달 중간값', '답 시간 중간값이 1.5초 이하', `${E.MASTER_MS / 1000}초 이하`);
 claims('숙달 최댓값', '가장 느린 것도', `${E.MASTER_MAX_MS / 1000}초 이하`);
 claims('단 안정 중간값', '중간값이 2초 이하', `${E.DAN_MS / 1000}초 이하`);
+claims('행성 지도 설명의 초', '아이에게 "그중 2번은', `${E.DAN_MS / 1000}초 안에`);
+{
+  const goal = E.stage(E.newState(), 0).goal;
+  // 진단 단계의 설명은 상수로 안 만들어지므로, 1단계 설명을 직접 만들어 문서와 같은 말을 쓰는지 본다.
+  const s = E.newState();
+  for (const id of E.FACT_IDS) s.facts[id].seen = 1;
+  const g1 = E.stage(s, 0).goal;
+  ok('진단 단계 설명이 있다', goal.length > 0);
+  ok('1단계 화면 설명이 문서와 같은 기준을 말한다', g1.includes(`그중 2번은 ${E.DAN_MS / 1000}초 안에`), g1);
+}
 
 /* --- 단계 표 --- */
 {

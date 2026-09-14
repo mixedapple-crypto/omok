@@ -189,11 +189,14 @@ export function isMastered(state, id) {
   return s.acc3 === 3 && s.median3 <= MASTER_MS && s.max3 <= MASTER_MAX_MS;
 }
 
+/** 단 안정의 사실 하나 몫. 행성 아래 "n/9"가 이것을 센다. */
+function factSteady(state, id) {
+  const s = factStats(state, id);
+  return s.acc3 === 3 && s.median3 <= DAN_MS;
+}
+
 export function danStable(state, dan) {
-  return FACT_IDS.filter((id) => fact(id).a === dan).every((id) => {
-    const s = factStats(state, id);
-    return s.acc3 === 3 && s.median3 <= DAN_MS;
-  });
+  return FACT_IDS.filter((id) => fact(id).a === dan).every((id) => factSteady(state, id));
 }
 
 const allSeen = (state) => FACT_IDS.every((id) => state.facts[id].seen > 0);
@@ -214,23 +217,50 @@ function refreshStage(state, now) {
   if (no > state.stageReached) state.stageReached = no;
 }
 
+const sec = (ms) => `${ms / 1000}초`;
+
+/**
+ * detail은 지금 진행도, goal은 다음 단계로 가려면 무엇을 해야 하는지 아이에게 하는 말이다.
+ *
+ * detail이 예전에는 "★ 오늘의 임무" 바로 아래 큰 제목 자리에 떠서 "0 / 8 단 안정"이 임무처럼 읽혔고,
+ * 무엇이 안정인지 설명이 어디에도 없었다(사용자가 "무슨 뜻이냐"고 물었다). 그래서 둘 다 행성 지도로 옮겼다.
+ * goal의 기준 문구는 상수에서 만든다 — 기준을 바꾸면 화면의 설명이 저절로 따라온다.
+ * 세 번의 중간값이 X 이하라는 것은 "세 번 중 두 번은 X 안에"와 정확히 같다.
+ */
 export function stage(state, now) {
   const no = Math.max(computedStage(state), state.stageReached);
   let detail = '';
-  if (no === 0) detail = `${FACT_IDS.filter((id) => state.facts[id].seen > 0).length} / 72 진단`;
-  else if (no === 1) detail = `${DANS.filter((d) => danStable(state, d)).length} / 8 단 안정`;
-  else if (no === 2) detail = `${FACT_IDS.filter((id) => isMastered(state, id)).length} / 72 숙달 · ${state.stage2Days.length} / ${STAGE2_DAYS}일`;
-  else if (no === 3) detail = `구두 인증 ${state.certDays.length} / ${CERT_DAYS}일`;
-  else detail = state.chant36Days.length ? `거꾸로 36초 달성` : '거꾸로 36초에 도전';
-  return { no, name: STAGE_NAMES[no], detail };
+  let goal = '';
+  if (no === 0) {
+    detail = `${FACT_IDS.filter((id) => state.facts[id].seen > 0).length} / 72 진단`;
+    goal = '처음에는 72문제를 한 번씩 풀어 봐요. 다 풀면 행성을 하나씩 안정시키는 여행이 시작돼요.';
+  } else if (no === 1) {
+    detail = `${DANS.filter((d) => danStable(state, d)).length} / 8 단 안정`;
+    goal = `한 단의 9문제를 저마다 3번 연속 맞히고 그중 2번은 ${sec(DAN_MS)} 안에 답하면 그 단 행성이 안정돼요. 8개가 모두 안정되면 다음 단계예요.`;
+  } else if (no === 2) {
+    detail = `${FACT_IDS.filter((id) => isMastered(state, id)).length} / 72 숙달 · ${state.stage2Days.length} / ${STAGE2_DAYS}일`;
+    goal = `72문제를 모두 3번 연속 맞히고 그중 2번은 ${sec(MASTER_MS)} 안에, 가장 느려도 ${sec(MASTER_MAX_MS)} 안에 답하는 날이 ${STAGE2_DAYS}번이면 다음 단계예요.`;
+  } else if (no === 3) {
+    detail = `구두 인증 ${state.certDays.length} / ${CERT_DAYS}일`;
+    goal = `부모님과 72문제를 소리 내어 확인해요. 서로 다른 날 ${CERT_DAYS}번 통과하면 마지막 단계예요.`;
+  } else {
+    detail = state.chant36Days.length ? `거꾸로 ${sec(CHANT_PASS_MS)} 달성` : `거꾸로 ${sec(CHANT_PASS_MS)}에 도전`;
+    goal = `9단부터 거꾸로 72개를 ${sec(CHANT_PASS_MS)} 안에 외워 봐요.`;
+  }
+  return { no, name: STAGE_NAMES[no], detail, goal };
 }
 
+/**
+ * 행성 하나 = 단 하나. ok는 그 단 9문제 중 안정 기준을 채운 수다.
+ * status: stable(9개 전부) · working(1개 이상) · idle(아직 0개).
+ *
+ * 예전에는 안정 안 된 단 중 숫자가 가장 작은 단 하나에 "진행"을 붙이고 나머지는 "대기"라고 적었다.
+ * 아이가 7단을 연습해도 2단에 "진행"이 붙어 있어 무엇을 뜻하는지 알 수 없었다 — 이제는 단마다 실제로 센 수를 보여준다.
+ */
 export function planets(state) {
-  let nowFound = false;
   return DANS.map((dan) => {
-    if (danStable(state, dan)) return { dan, status: 'stable' };
-    if (!nowFound) { nowFound = true; return { dan, status: 'now' }; }
-    return { dan, status: 'far' };
+    const ok = FACT_IDS.filter((id) => fact(id).a === dan && factSteady(state, id)).length;
+    return { dan, ok, status: ok === 9 ? 'stable' : ok > 0 ? 'working' : 'idle' };
   });
 }
 
