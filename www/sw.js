@@ -1,5 +1,5 @@
 /**
- * 포털 서비스 워커 — 게임 선택 화면과 숫자숲을 오프라인에서도 열리게 한다.
+ * 포털 서비스 워커 — 게임 선택 화면과 숫자숲·곱셈 바다·부모님 안내를 오프라인에서도 열리게 한다.
  *
  * 이 파일은 원래 "자기 파괴 워커"였다. 포털 전환 이전에는 사이트 루트가 오목이었고
  * 오목의 sw.js가 루트 스코프에 등록돼 루트 전체를 캐시-우선으로 서빙했다. 이미 방문한
@@ -32,6 +32,13 @@ const ASSETS = [
   './math/index.html',
   './mul/',
   './mul/index.html',
+  // 부모님 안내(npm run guide가 지침서에서 만든다). 목록은 tests/guide.test.js가 생성물과 대조한다.
+  './guide/',
+  './guide/index.html',
+  './guide/omok.html',
+  './guide/math.html',
+  './guide/mul.html',
+  './guide/gugudan.html',
 ];
 
 /** 이 워커가 맡은 범위 안에서의 상대 경로. 로컬(/)과 Pages(/omok/) 양쪽에서 같게 나온다. */
