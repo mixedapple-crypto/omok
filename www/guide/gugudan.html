@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<!-- 자동 생성 파일 — 고치지 말 것. documents/*-지침서.md를 고친 뒤 npm run guide. -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>구구단 로켓 안내</title>
+<meta name="description" content="이 문서는 게임 코드를 열지 않고도 구구단 로켓이 어떤 규칙으로 문제를 내고, 무엇을 재고, 언제 다음 단계로 보내는지 찾아볼 수 있게 정리한 참조 자료입니다. 아이가 &quot;왜 자꾸 7×8이 나와?&quot;, &quot;별은 언제 받아?&quot;라고 물었을 때 여기서 답을 찾으면 됩니다.">
+<meta name="theme-color" content="#FFF6E8">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --paper:#FFF6E8; --meadow:#63B95D; --meadow-deep:#3E8C4A;
+    --coral:#FF8A5C; --coral-deep:#E96F41; --sky:#BFE4F5;
+    --ink:#41372A; --ink-soft:#8A7B66; --card:#FFFFFF; --line:#E9DECB; --tint:#FBF3E4;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  html{color-scheme:light;scroll-padding-top:12px}
+  body{background:var(--paper);color:var(--ink);font-family:'Noto Sans KR',system-ui,sans-serif;font-size:16px;line-height:1.75;padding:20px 16px 48px}
+  .wrap{max-width:720px;margin:0 auto}
+  a{color:var(--coral-deep)}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .back{font-size:14px;text-decoration:none;color:var(--ink-soft);background:var(--card);border:1.5px solid var(--line);border-radius:999px;padding:5px 14px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+  .tabs a{font-size:13.5px;text-decoration:none;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:999px;padding:4px 12px;white-space:nowrap}
+  .tabs a[aria-current]{background:var(--meadow-deep);border-color:var(--meadow-deep);color:#fff}
+  h1{font-family:'Jua','Noto Sans KR',sans-serif;font-weight:400;font-size:28px;line-height:1.3;color:var(--meadow-deep);margin-top:22px}
+  h2{font-family:'Jua','Noto Sans KR',sans-serif;font-weight:400;font-size:22px;line-height:1.35;margin:36px 0 10px;padding-top:14px;border-top:2px dashed var(--line)}
+  h3{font-size:17px;font-weight:700;margin:24px 0 6px}
+  h4{font-size:16px;font-weight:700;margin:18px 0 4px}
+  p{margin:10px 0;word-break:keep-all;overflow-wrap:anywhere}
+  ul,ol{margin:10px 0 10px 1.3em}
+  li{margin:4px 0;word-break:keep-all;overflow-wrap:anywhere}
+  b{font-weight:700}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:var(--tint);border-radius:5px;padding:1px 5px}
+  pre{background:var(--tint);border-radius:10px;padding:10px 12px;overflow-x:auto}
+  .tbl{overflow-x:auto;margin:12px 0;background:var(--card);border-radius:12px;border:1.5px solid var(--line)}
+  table{border-collapse:collapse;width:100%;font-size:14.5px;line-height:1.5}
+  th,td{padding:7px 10px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);word-break:keep-all}
+  th{background:var(--tint);font-weight:700;white-space:nowrap}
+  tr:last-child td{border-bottom:0}
+  .toc{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:12px 16px;margin-top:16px}
+  .toc b{font-size:14px;color:var(--ink-soft)}
+  .toc ol{margin:6px 0 0 1.3em;font-size:15px}
+  .lead{color:var(--ink-soft)}
+  .cards{display:flex;flex-direction:column;gap:12px;margin-top:20px}
+  a.card{display:flex;gap:14px;align-items:flex-start;text-decoration:none;color:var(--ink);background:var(--card);border-radius:18px;padding:14px 16px;border:1.5px solid var(--line);box-shadow:0 3px 0 rgba(65,55,42,.08)}
+  .card .ic{font-size:36px;line-height:1.2}
+  .card .nm{font-family:'Jua','Noto Sans KR',sans-serif;font-size:19px}
+  .card .ds{font-size:14px;color:var(--ink-soft);line-height:1.6;margin-top:2px}
+  footer{margin-top:40px;font-size:12.5px;color:var(--ink-soft)}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="top">
+    <a class="back" href="../">← 게임숲으로</a>
+    <a class="back" href="./">📖 안내 처음</a>
+  </div>
+  <nav class="tabs" aria-label="게임별 안내"><a href="./omok.html">⚫ 오목</a><a href="./math.html">🐶 더하기 빼기</a><a href="./mul.html">🐟 곱셈 나눗셈</a><a href="./gugudan.html" aria-current="page">🚀 구구단</a></nav>
+  <h1>구구단 로켓 — 훈련 규칙과 진행 지침서</h1>
+  <div class="toc"><b>차례</b><ol><li><a href="#한눈에-보기">한눈에 보기</a></li><li><a href="#사실-72개와-거꾸로-순서">사실 72개와 거꾸로 순서</a></li><li><a href="#연료-채우기-문제를-내는-규칙">연료 채우기: 문제를 내는 규칙</a></li><li><a href="#무엇을-재고-언제-숙달로-보나">무엇을 재고 언제 숙달로 보나</a></li><li><a href="#단계">단계</a></li><li><a href="#로켓-레이스">로켓 레이스</a></li><li><a href="#구두-카드-거꾸로-암송-구두-인증">구두 카드, 거꾸로 암송, 구두 인증</a></li><li><a href="#오늘의-임무와-용돈">오늘의 임무와 용돈</a></li><li><a href="#배지">배지</a></li><li><a href="#부모-화면">부모 화면</a></li><li><a href="#이-게임에-없는-것">이 게임에 없는 것</a></li></ol></div>
+<article>
+<p>이 문서는 게임 코드를 열지 않고도 구구단 로켓이 어떤 규칙으로 문제를 내고, 무엇을 재고, 언제 다음 단계로 보내는지 찾아볼 수 있게 정리한 참조 자료입니다. 아이가 &quot;왜 자꾸 7×8이 나와?&quot;, &quot;별은 언제 받아?&quot;라고 물었을 때 여기서 답을 찾으면 됩니다.</p>
+<p><b>적용 범위</b>: 이 문서는 구구단 로켓에만 해당합니다. 숫자숲 친구들, 곱셈 바다, 오목은 별개의 게임이라 각자의 지침서와 부모님 화면을 보십시오. 이 게임의 목표는 구구단을 &quot;천천히 하면 다 맞는&quot; 수준에서 &quot;생각 없이 나오는&quot; 수준으로 올리는 것이고, 최종 목표는 전문가가 제시한 <b>거꾸로 36초</b>입니다.</p>
+<h2 id="한눈에-보기">한눈에 보기</h2>
+<p>하루 한 세션은 네 토막이고 합쳐서 7분 안팎입니다.</p>
+<div class="tbl"><table><thead><tr><th>토막</th><th>하는 일</th><th>혼자 할 수 있나</th></tr></thead><tbody><tr><td>연료 채우기</td><td>엔진이 고른 24문제. 약한 것, 간격 복습, 무작위 감사가 섞여 나온다</td><td>예</td></tr><tr><td>로켓 레이스</td><td>정해진 묶음을 풀며 로켓이 전진. 최근 5회 중간값 유령과 함께 달린다</td><td>예</td></tr><tr><td>구두 카드</td><td>식만 보고 소리 내어 답한 뒤 스스로 맞았는지 표시. 10장</td><td>예</td></tr><tr><td>거꾸로 암송</td><td>연습 모드는 박자에 맞춰 답이 비치고, 측정 모드는 답을 숨긴다</td><td>연습만</td></tr></tbody></table></div>
+<p>기억해 두실 것이 둘 있습니다. 첫째, 정답은 아이가 답 전체를 넣는 시간으로 재고, 사실 72개 각각의 <b>최근 3회</b>를 봅니다. 합계나 평균으로 판단하지 않습니다. 둘째, <b>문제 하나에 걸린 초는 아이 화면에 보여주지 않습니다.</b> 사실 하나하나의 숫자는 부모 화면에만 있습니다. 다만 한 판 전체의 시간은 보여줍니다. 연료 채우기, 레이스, 암송이 그렇습니다. 견주는 상대는 고정된 목표가 아니라 아이 자신의 최근 기록입니다.</p>
+<h2 id="사실-72개와-거꾸로-순서">사실 72개와 거꾸로 순서</h2>
+<p>2단부터 9단까지, 각 단 ×1부터 ×9까지 72개입니다. 7×8과 8×7은 서로 다른 사실로 따로 셉니다.</p>
+<p>거꾸로 순서는 <b>9단부터 2단까지, 각 단을 ×9에서 ×1로</b> 내려옵니다. 9×9, 9×8, …, 9×1, 8×9, …, 2×1 순입니다. 앞으로 외우는 구구단은 노래처럼 사슬로 이어져 앞 항목이 다음을 끌어내지만, 거꾸로 하면 사슬이 끊겨 각 사실을 따로 꺼내야 합니다.</p>
+<h2 id="연료-채우기-문제를-내는-규칙">연료 채우기: 문제를 내는 규칙</h2>
+<p>한 세션은 24문제이고, 집중 12문제, 간격 복습 7문제, 무작위 감사 5문제로 채웁니다.</p>
+<div class="tbl"><table><thead><tr><th>칸</th><th>무엇을 내나</th></tr></thead><tbody><tr><td>집중</td><td>최근 3회에 틀린 것이 있거나, 답 시간 중간값이 1.5초를 넘거나, 아직 3회를 못 채운 사실</td></tr><tr><td>간격 복습</td><td>숙달된 사실 가운데 기한이 된 것. 맞힐수록 간격이 하루, 이틀, 나흘로 늘고 최대 14일</td></tr><tr><td>무작위 감사</td><td>나머지에서 무작위</td></tr></tbody></table></div>
+<p>세 가지 상한과 하한이 있습니다.</p>
+<ul><li>한 사실은 한 세션에 4번까지만 나옵니다.</li><li>같은 사실 사이에는 최소 3문제가 있습니다.</li><li>어떤 사실도 5일 넘게 안 나오지 않습니다. 5일이 되면 다른 무엇보다 먼저 나옵니다.</li></ul>
+<p>틀리면 정답을 잠깐 보여준 뒤 아이가 정답을 직접 다시 입력해야 다음으로 갑니다. 그 문제는 3~5문제 뒤에 한 번 더 나오고, 다음 날에도 집중 칸으로 돌아옵니다.</p>
+<p>숫자판에는 확정 키가 없습니다. 답의 자릿수가 차는 순간 제출됩니다. 두 자리 답은 첫 숫자를 지우기로 고칠 수 있지만, 한 자리 답은 첫 숫자에서 바로 제출되므로 잘못 누르면 오답으로 처리되어 재출제됩니다. 처음에는 확정 키를 두었는데 매 문제마다 탭이 하나 더 붙어 리듬을 깨서 뺐습니다. 한 자리 답은 72개 중 14개뿐이고 전부 쉬운 것들이라 자릿수가 드러나는 것은 배움에 영향이 없습니다.</p>
+<p><b>혼동쌍</b>은 아이의 오답에서 만듭니다. 6×7에 48이라 답하면 48은 6×8의 답이므로 6×7과 6×8을 묶습니다. 같은 단, 같은 승수, 그 외 순으로 짝을 고릅니다. 혼동쌍은 처음엔 <b>분리</b> 상태라 같은 세션에 함께 내지 않습니다. 두 사실이 모두 서로 다른 2일에 정확하고 빠르면 <b>대비</b> 상태가 되어 연달아 냅니다. 대비에서 또 2일 정확하면 <b>극복</b>이고 배지가 하나 오릅니다. 대비에서 다시 틀리면 분리로 되돌리되 한 번만 되돌립니다.</p>
+<p>첫 사흘은 진단입니다. 하루 24개씩 72개를 한 번씩 재고, 그동안은 세션 종류가 &quot;진단&quot;입니다. 진단은 72개를 다 볼 때까지 이어집니다.</p>
+<h3 id="한-판의-시간과-50초-목표">한 판의 시간과 50초 목표</h3>
+<p>연료 채우기가 끝나면 이번 판의 시간과 최근 기록이 나란히 나옵니다. 시간은 답을 넣는 데 걸린 시간의 합이고, 정답을 밝히는 0.3초와 오답 때 정답을 보여주는 1.2초는 빼고 셉니다. 아이가 어쩔 수 없는 시간까지 얹으면 견주는 의미가 없기 때문입니다.</p>
+<p>견주는 상대는 같은 종류 최근 5판의 중간값입니다. 레이스의 유령과 같은 방식이고 같은 이유입니다. 기록이 두 판 미만이면 견줄 상대가 없으므로 그때만 목표를 대신 보여줍니다.</p>
+<p><b>고정된 시간을 통과선으로 걸지 않았습니다.</b> 24문제를 50초에 끝내려면 문제 하나가 2초여야 하는데, 그것은 여덟 단이 전부 안정에 닿아야 나오는 기록입니다. 1단계의 졸업 조건과 같은 값이라, 그것을 매일의 통과선으로 걸면 1단계를 졸업할 때까지 매일 지게 됩니다. 게다가 틀리면 그 문제가 뒤에 다시 나와 판이 길어지므로, 고정 시간은 힘든 날에 두 번 벌을 주는 셈이 됩니다.</p>
+<p>그래서 50초는 통과선이 아니라 배지입니다. 연료 채우기 한 판을 50초 안에, 정확도 95% 이상으로 끝내면 &quot;연료 50초&quot; 배지를 받습니다. 정확도 조건이 붙은 이유는, 오답이 다시 나오는 횟수가 한 사실당 4번에서 멈추기 때문입니다. 전부 틀리면 판이 140문제까지 늘지만 거기서 멈추므로, 한 문제를 0.3초로 두드리면 42초에 끝납니다. 시간만 보면 배지가 뚫리는 셈이라 정확도를 함께 봅니다.</p>
+<h2 id="무엇을-재고-언제-숙달로-보나">무엇을 재고 언제 숙달로 보나</h2>
+<div class="tbl"><table><thead><tr><th>지표</th><th>정의</th></tr></thead><tbody><tr><td>답 시간</td><td>문제가 뜬 뒤 마지막 숫자를 누를 때까지. 자릿수가 차는 순간 제출되므로 따로 누르는 키가 없다</td></tr><tr><td>수정</td><td>지우기를 썼거나 첫 숫자가 정답의 첫 자리와 달랐으면 표시. 통계에서 따로 센다</td></tr><tr><td>정확도</td><td>최근 3회 중 정답 수</td></tr></tbody></table></div>
+<p>한 사실이 <b>숙달</b>이려면 최근 3회 전부 정답이고, 답 시간 중간값이 1.5초 이하이며, 가장 느린 것도 2.5초 이하여야 합니다. 한 단이 <b>안정</b>이려면 그 단 9개 사실이 전부 최근 3회 정답이고 중간값이 2초 이하여야 합니다.</p>
+<h2 id="단계">단계</h2>
+<p>단계는 아이에게 &quot;다음 행성&quot;으로 보입니다. 한 번 도달한 단계는 뒤로 가지 않습니다. 피곤한 날 하나가 &quot;행성이 다시 불안정&quot;으로 보이면 안 되기 때문입니다. 다만 홈 화면의 행성 색은 지금 상태를 정직하게 보여줍니다.</p>
+<h3 id="홈-화면의-행성-안정-지도">홈 화면의 행성 안정 지도</h3>
+<p>행성 여덟 개가 2단부터 9단까지 한 단씩입니다. 행성 아래에는 그 단 9문제 가운데 안정 기준(최근 3회 정답, 중간값 2초 이하)을 채운 문제 수가 &quot;4/9&quot;처럼 적히고, 9개를 다 채우면 &quot;안정&quot;으로 바뀝니다. 색은 세 가지입니다. 안정은 초록, 한 문제라도 채운 단은 분홍, 아직 하나도 못 채운 단은 흐린 회색입니다.</p>
+<p>지도 위에는 지금 단계에서 다음 단계로 가려면 무엇을 해야 하는지를 한 줄로 적고, 끝에 &quot;지금 0 / 8 단 안정&quot; 같은 진행도를 붙입니다. 설명 문구의 기준 숫자는 코드 상수에서 만들어지므로 기준을 바꾸면 화면 설명도 따라 바뀝니다. 중간값 2초 이하는 아이에게 &quot;그중 2번은 2초 안에&quot;라고 말합니다. 세 번의 중간값이 2초 이하인 것과 세 번 중 두 번이 2초 안인 것은 같은 조건입니다.</p>
+<p><b>단계 진행도는 &quot;★ 오늘의 임무&quot; 칸에 두지 않습니다.</b> 처음에는 그 칸의 큰 제목 자리에 &quot;0 / 8 단 안정&quot;이 떠서 임무처럼 읽혔고, 무엇이 안정인지 설명도 없었습니다. 지금 그 자리에는 &quot;3가지 남았어요&quot;, &quot;오늘 임무 완료!&quot;처럼 오늘 임무가 몇 가지 남았는지만 적습니다. 예전에는 안정이 아닌 단 중 숫자가 가장 작은 단에 &quot;진행&quot;, 나머지에 &quot;대기&quot;를 붙였는데, 아이가 7단을 연습해도 2단에 &quot;진행&quot;이 붙어 있어 뜻이 통하지 않아 단마다 센 수로 바꿨습니다.</p>
+<div class="tbl"><table><thead><tr><th>번호</th><th>이름</th><th>무엇을 하나</th><th>다음으로 가는 조건</th></tr></thead><tbody><tr><td>0</td><td>진단</td><td>사흘에 걸쳐 72개를 한 번씩</td><td>72개를 전부 봄</td></tr><tr><td>1</td><td>단별 안정</td><td>한 단씩 레이스와 연료 채우기</td><td>8개 단 모두 안정</td></tr><tr><td>2</td><td>혼합</td><td>두 단 섞기, 전체 무작위 레이스, 혼동쌍 대비</td><td>72개 전부 숙달인 날이 서로 다른 2일</td></tr><tr><td>3</td><td>구두 인증</td><td>주 1회 부모와 무작위 72개 구두 검사</td><td>서로 다른 2일에 통과</td></tr><tr><td>4</td><td>거꾸로 도전</td><td>암송 측정 모드에서 36초에 도전</td><td>도전 기록이며 끝이 없다</td></tr></tbody></table></div>
+<h2 id="로켓-레이스">로켓 레이스</h2>
+<div class="tbl"><table><thead><tr><th>세트</th><th>문제 수</th><th>순서</th><th>열리는 때</th></tr></thead><tbody><tr><td>한 단 거꾸로 (2단~9단)</td><td>9</td><td>×9에서 ×1로</td><td>언제나</td></tr><tr><td>두 단 (2단과 3단, …, 8단과 9단)</td><td>18</td><td>무작위</td><td>두 단이 모두 안정이거나 2단계부터</td></tr><tr><td>전체 무작위</td><td>72</td><td>무작위</td><td>2단계부터</td></tr><tr><td>전체 거꾸로</td><td>72</td><td>거꾸로 순서</td><td>3단계부터</td></tr></tbody></table></div>
+<p>레이스에서는 틀려도 다시 입력하지 않고 다음으로 갑니다. 정확도가 95% 이상이면 &quot;항로 안정&quot;, 하나도 안 틀리면 &quot;완벽 항로&quot;이고 완벽 항로는 횟수를 셉니다. <b>유령 로켓</b>은 같은 세트의 최근 5회 기록 중간값입니다. 기록이 2회 미만이면 유령이 없고, 부모 화면에서 끌 수 있습니다. 최고 기록이 아니라 중간값과 달리는 이유는, 우연히 잘된 하루와 매번 경쟁하면 피곤한 날마다 지는 경험이 쌓이기 때문입니다.</p>
+<h2 id="구두-카드-거꾸로-암송-구두-인증">구두 카드, 거꾸로 암송, 구두 인증</h2>
+<p><b>구두 카드</b>는 식만 보고 소리 내어 답한 뒤 &quot;답 보기&quot;를 눌러 확인하고 맞았는지 스스로 표시합니다. 한 번에 10장이고 약한 사실 6장을 우선 넣습니다. 자기 판정이라 숙달 판단에는 쓰지 않습니다. 목적은 매일 입으로 꺼내는 경험을 끊지 않는 것입니다.</p>
+<p><b>거꾸로 암송</b>은 두 모드입니다. 연습 모드는 72초, 60초, 48초, 40초, 36초 박자 중 하나를 골라 식이 뜨고 박자 뒤 답이 비칩니다. 측정 모드는 답을 숨기고 부모가 시작과 정지, 그리고 &quot;틀림&quot;과 &quot;놓침&quot;을 누릅니다. 36초 안에 틀림과 놓침이 모두 0이면 통과이고 &quot;거꾸로 36초&quot; 배지를 받습니다.</p>
+<p><b>구두 인증</b>은 주 1회 부모와 합니다. 무작위 72개를 하나씩 보여주고 부모가 맞음, 틀림, 못 함, 수정을 누릅니다. &quot;틀림&quot;은 다른 답을 말한 것이고 &quot;못 함&quot;은 답을 아예 못 낸 것이며, &quot;수정&quot;은 스스로 고쳐 맞힌 것입니다. 틀림 0, 못 함 0, 자기 수정 2개까지면 그날은 통과이고, 서로 다른 2일에 통과하면 인증입니다.</p>
+<h2 id="오늘의-임무와-용돈">오늘의 임무와 용돈</h2>
+<p>오늘의 임무는 하나뿐입니다. 연료 채우기 1회, 레이스 1회, 구두 카드 10장을 모두 하면 임무 완료이고 저금통에 30원이 들어옵니다. 하루에 한 번만 들어오고, 같은 날 더 해도 늘지 않습니다. 저금통은 부모 화면에 보이며, 실제로 용돈을 주셨으면 &quot;용돈 지급 완료&quot;를 눌러 0원으로 비웁니다. 두 번 눌러 확인합니다.</p>
+<h2 id="배지">배지</h2>
+<div class="tbl"><table><thead><tr><th>배지</th><th>조건</th><th>세는 것</th></tr></thead><tbody><tr><td>행성 안정</td><td>한 단이 안정</td><td>안정된 단 수</td></tr><tr><td>혼동쌍 극복</td><td>혼동쌍이 대비 상태에서 2일 정확</td><td>극복한 쌍 수</td></tr><tr><td>완벽 항로</td><td>레이스 무오류</td><td>횟수</td></tr><tr><td>연료 50초</td><td>연료 채우기 한 판을 50초 안에, 정확도 95% 이상</td><td>달성한 날 수</td></tr><tr><td>사흘 안정</td><td>임무 완료가 3일 연속</td><td>횟수</td></tr><tr><td>구두 인증</td><td>서로 다른 2일에 구두 인증 통과</td><td>통과한 날 수</td></tr><tr><td>거꾸로 36초</td><td>측정 모드에서 36초 안에 전부 정확</td><td>달성한 날 수</td></tr></tbody></table></div>
+<h2 id="부모-화면">부모 화면</h2>
+<p>홈 화면 맨 아래의 <b>📊 부모님</b> 버튼을 누른 뒤 17 × 23을 풀면 들어갑니다. 숫자숲, 곱셈 바다와 같은 문제라 답 하나만 외우시면 네 게임 어디서나 통합니다. 들어갈 때마다 다시 물으며, 통과하기 전에는 기록을 그리지도 않습니다.</p>
+<p>예전에는 구석의 흐린 자물쇠를 3초 길게 눌러야 했습니다. 아이가 못 찾는 만큼 부모도 못 찾아서 나머지 세 게임과 같은 방식으로 바꿨습니다.</p>
+<ul><li><b>격자</b>: 8단 × 9승수. 보기 탭으로 정확도, 답 시간, 마지막 출제를 바꿉니다. 답 시간 보기의 색은 1.5초 이하, 2초 이하, 2.5초 이하, 그 이상 네 단계입니다.</li><li><b>혼동쌍 목록</b>: 어떤 사실끼리 몇 번 헷갈렸는지와 분리, 대비, 극복 상태.</li><li><b>이번 주 인증</b>: 마지막 통과일과 &quot;인증 시작&quot;.</li><li><b>저금통</b>과 &quot;용돈 지급 완료&quot;.</li><li><b>운영</b>: 연습 모드(부모가 눌러 보는 동안 기록을 남기지 않음), 마지막 문제 무효화, 엔진 초기화(학습 상태만 지우고 용돈과 배지 횟수는 남김), 내보내기와 가져오기(긴 문자열 복사), 유령 끄기.</li></ul>
+<h2 id="이-게임에-없는-것">이 게임에 없는 것</h2>
+<ul><li>순위표와 남과 비교. 문제마다 뜨는 시간 막대. 음성 인식.</li><li>나눗셈 세로셈. 곱셈 바다에 있습니다.</li><li>곱을 보고 두 수를 떠올리는 거꾸로 찾기. 나눗셈 어림에 도움이 되므로 나중 후보로만 남깁니다.</li><li>형제 프로필. 필요해지면 그때 넣습니다.</li></ul>
+</article>
+  <footer>이 안내는 게임 지침서에서 자동으로 만들어집니다. 게임 규칙이 바뀌면 함께 바뀝니다.</footer>
+</main>
+</body>
+</html>
