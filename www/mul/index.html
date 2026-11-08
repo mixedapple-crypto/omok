@@ -187,6 +187,20 @@
   .wrong-list span{display:inline-block;background:#FDE8E8;border-radius:8px;padding:1px 10px;margin:2px 4px 2px 0}
   .gate-in{font-size:22px;width:120px;text-align:center;border:2px solid #CFE2EC;border-radius:12px;padding:8px;font-family:inherit;background:var(--card);color:var(--ink)}
   .note{font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.7}
+  [hidden]{display:none!important}
+  .daily-card{margin:12px 16px;padding:16px;border:2px solid var(--sea);border-radius:18px;background:var(--card);line-height:1.7}
+  .daily-card h2{font-size:22px;color:var(--sea-deep)}
+  .daily-card select{width:100%;font:inherit;padding:10px;margin:8px 0;border:1px solid var(--sea);border-radius:10px;background:white;color:var(--ink)}
+  .daily-action{min-height:48px;padding:10px 16px;background:var(--sea-deep);color:white;border-radius:12px;margin-top:8px;width:100%}
+  #scr-daily{padding:16px;gap:10px;background:linear-gradient(var(--sky),var(--foam))}
+  #daily-heading{font-size:20px;color:var(--sea-deep)}
+  #daily-problem{white-space:pre;text-align:right;font:36px/1.3 monospace;max-width:220px;margin:4px auto}
+  #daily-answer{display:block;min-height:52px;border:2px solid var(--sea);border-radius:12px;background:white;font-size:32px;text-align:center}
+  #daily-pad{margin:0;padding:8px 0}
+  #daily-help{line-height:1.7;overflow-wrap:anywhere}
+  #daily-feedback,#daily-storage{color:#A33434;min-height:20px}
+  .daily-result{background:white;border-radius:10px;padding:8px 10px;margin:5px 0;line-height:1.7}
+  .daily-result .x{min-height:48px}
 </style>
 
 
@@ -203,6 +217,14 @@
         <span class="chip">🐷 <span class="num" id="coin-chip">0</span>원</span>
         <button class="chip" id="btn-sound" aria-label="소리 켜고 끄기">🔊</button>
       </div>
+    </div>
+    <div class="daily-card">
+      <h2>📅 매일 곱셈</h2>
+      <p id="daily-status"></p>
+      <label for="daily-mode">오늘 풀 문제</label>
+      <select id="daily-mode"><option value="mixed">두 유형 섞기 (각 5문제)</option><option value="one">두 자리 × 한 자리</option><option value="two">두 자리 × 두 자리</option></select>
+      <p class="note">한 라운드 10문제 · 1라운드 100점, 2·3라운드 90점이면 성공! 오답 풀이 후 부모님 확인을 받아요.</p>
+      <button class="daily-action" id="daily-open">매일 곱셈 풀기 ➜</button>
     </div>
     <div class="quest">
       <div class="qt">🎯 용돈 퀘스트</div>
@@ -224,6 +246,25 @@
       <button id="btn-parent">📊 부모님</button>
     </div>
     <div class="map" id="map"></div>
+  </section>
+
+  <section class="screen" id="scr-daily" aria-label="매일 곱셈 시험">
+    <div class="battle-top"><h2 id="daily-heading"></h2><button class="btn-flee" id="daily-home">홈으로</button></div>
+    <p id="daily-progress" aria-live="polite"></p>
+    <p id="daily-help"></p>
+    <div id="daily-problem" aria-label="곱셈 문제"></div>
+    <div id="daily-entry"><output id="daily-answer" aria-label="입력한 답"></output></div>
+    <p id="daily-feedback" role="status"></p>
+    <div class="pad" id="daily-pad">
+      <button data-daily-key="1">1</button><button data-daily-key="2">2</button><button data-daily-key="3">3</button>
+      <button data-daily-key="4">4</button><button data-daily-key="5">5</button><button data-daily-key="6">6</button>
+      <button data-daily-key="7">7</button><button data-daily-key="8">8</button><button data-daily-key="9">9</button>
+      <button data-daily-key="submit" style="font-size:18px">제출</button><button data-daily-key="0">0</button><button class="k-del" data-daily-key="del" aria-label="한 자리 지우기">⌫</button>
+    </div>
+    <div id="daily-results"></div>
+    <button class="daily-action" id="daily-review" hidden>틀린 문제 차근차근 풀기</button>
+    <button class="daily-action" id="daily-next" hidden>다음 라운드</button>
+    <p id="daily-storage" role="alert"></p>
   </section>
 
   <!-- BATTLE -->
@@ -873,6 +914,7 @@ if(typeof document!=='undefined'){(function(){
   }
   function renderHome(){
     dailyCheck();
+    if(window.MulDailyUI)window.MulDailyUI.refresh();
     $('coin-chip').textContent=S.coins;
     /* 어느 구역에서 이겨야 세어지는지 이름으로 알려 준다. 안 그러면 옛 판을 이겨도 숫자가
        안 올라가는 것이 고장으로 보인다. */
@@ -1439,6 +1481,7 @@ if(typeof document!=='undefined'){(function(){
       html+='<tr><td>'+TYPES[t]+'</td><td class="num">'+st.a+'</td><td class="num '+cls+'">'+acc+'%</td><td class="num">'+(st.to||0)+'</td></tr>';
     }
     html+='</table>';
+    html+='<p class="note">📅 매일 곱셈은 모험과 별개로 하루 한 번 진행합니다. 두 자리 × 한 자리, 두 자리 × 두 자리, 두 유형 섞기를 선택하고 매 라운드 새 문제 10개를 풉니다. 10문제 제출 전에는 정답을 공개하지 않습니다. 1라운드 100점, 2·3라운드 90점 이상이면 성공하며, 3라운드 뒤에는 추가 재도전이 없습니다. 틀린 문제의 분해 풀이를 마쳐야 다음 라운드나 하루 마무리로 넘어갑니다. 날짜별 기록에서 성공 여부와 관계없이 학습을 마친 날을 확인해 주세요. 날짜는 기기 기준이며 기록과 부모 확인은 이 브라우저에 저장됩니다. 기존 부모 관문을 사용하며 별도 계정 인증이나 알림은 없습니다.</p>';
     html+='<h3 style="margin-top:18px;font-size:16px">최근 틀린 문제</h3><div class="wrong-list">';
     if(S.wrongLog.length===0)html+='아직 없어요!';
     for(i=0;i<Math.min(12,S.wrongLog.length);i++){
@@ -1448,6 +1491,7 @@ if(typeof document!=='undefined'){(function(){
     html+='</div><div style="margin-top:16px;background:#fff;border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px"><span>🐷 저금통 <b class="num">'+S.coins+'원</b></span><button class="x" id="btn-payout">용돈 지급 완료</button></div>';
     html+='<p class="note">· 구역은 곱셈(올림 없음) → 나눗셈 → 곱셈(올림) → 나눗셈 순입니다. 곱셈이든 나눗셈이든 모두 세로셈으로 보여 줍니다.<br>· 곱셈 세로셈의 빈칸 순서는 올림 → 일의 자리 → 백의 자리 → 십의 자리입니다. 앞의 둘은 올림이 오른쪽에서 왼쪽으로 흐르니 오른쪽부터이고, 뒤의 둘은 이미 구한 두 자리 수를 옮겨 적는 단계라 왼쪽부터입니다.<br>· 1구역(올림 없음)은 세로셈 두 판 → <b>십의 자리부터 분해해서 더하기</b> 두 판 → 보스 순입니다. 세로셈은 오른쪽부터 계산하지만 암산은 왼쪽부터가 훨씬 쉽습니다. 답의 크기가 먼저 잡히고 자릿수를 거꾸로 외울 필요가 없기 때문입니다. 보스가 바로 그 암산이라, 세로셈만 연습시키면 보스에서 배운 적 없는 방법을 요구하게 됩니다. 분해 단계가 그 다리 역할을 합니다.<br>· 3구역(올림)은 분해 두 판 → <b>올림을 보여주고 답을 한 번에</b> 두 판 → 보스 순입니다. 세로셈은 1구역에서 익혔으니 바로 분해로 들어가고, 보스 직전에 계단을 하나 둡니다. 66 × 6 이면 올림 3을 화면이 미리 적어 두고 아이는 396을 한 번에 씁니다. 보스는 그 올림마저 걷어냅니다. 올림 칸을 아이가 직접 채우는 세로셈은 이 게임에서 1구역에만 있습니다.<br>· 분해는 42 × 3 이면 십의 자리 4 × 3 → 일의 자리 2 × 3 → 둘을 더하기, 이렇게 세 번을 묻습니다. 값은 자리별로 쪼개지 않고 통째로 받습니다. 12는 "1, 2" 두 자리가 아니라 하나의 크기로 다뤄야 머릿속 계산과 같아지기 때문입니다.<br>· 십의 자리 곱은 <b>끝의 0을 빼고</b> 적습니다. 42 × 3 이면 120이 아니라 12를 넣고, 한 칸 왼쪽에서 끝나 자리가 0을 대신합니다. 그 0에는 구할 것이 없는데 제한 시간 안에 한 번 더 눌러야 했습니다.<br>· 곱셈 보스는 세로셈으로 보여 주되 올림 칸 없이 답을 한 번에 받습니다. 난이도는 그 구역에서 연습한 것과 같습니다 — 올림 없는 곱셈만 배운 구역의 보스는 올림 없는 문제만 냅니다.<br>· 나눗셈은 네 구역 모두 나머지가 없는 문제만 냅니다. 2구역은 세 자리 ÷ 한 자리(나누는 수 2~6), 4구역은 세 자리 ÷ 두 자리(나누는 수 11~49)입니다.<br>· 두 자리로 나누면 첫 자리 하나로는 절대 나눠지지 않아 두 자리를 한꺼번에 봅니다. 그래서 몫을 <b>어림</b>해야 하고, 이것이 4구역이 어려운 진짜 이유입니다. 참고로 두 자리로 나누기는 4학년 과정입니다.<br>· 몫에 0이 들어가는 경우(609÷3=203)는 0을 빼먹는 대표적 함정이라 따로 가르쳐야 해서 뺐습니다.<br>· 2구역 나눗셈은 처음 두 판에서 <b>곱한 값만</b> 넣습니다. 582 ÷ 3 이면 3 → (몫 1이 저절로 적히고 28이 내려옴) → 27 → (몫 9, 12) → 12 → (몫 4). 나누는 수의 구구단에서 넘지 않는 가장 큰 것을 찾는 연습만 남기고 뺄셈을 걷어낸 판입니다. 다음 두 판은 몫과 뺀 값을 모두 넣고(곱한 값은 저절로 채워집니다), <b>보스에서는 몫만</b> 넣습니다. 곱셈 구역과 같은 리듬입니다 — 일반은 도움을 주고 보스는 도움을 걷어내되 산수는 그대로입니다.<br>· 4구역은 처음 두 판에서 <b>몫만</b> 넣고 곱한 값과 뺀 값이 그 자리에서 바로 나옵니다. 두 자리로 나눌 땐 구구단이 없어 곱한 값을 넣으려면 23 × 7 같은 암산이 필요하고, 그러면 처음 두 판이 다음 두 판보다 어려워지기 때문에 어림만 연습합니다. 다음 두 판은 몫과 뺀 값, 보스는 몫만입니다.<br>· 보스에서 앞 단계의 뺀 값은 다음 몫을 넣은 뒤에야 보입니다. 미리 보여주면 아이가 머리로 구해야 할 수를 화면이 대신 알려주는 셈이라서입니다.<br>· 빈칸은 한 자리씩이라 누르는 즉시 채점됩니다. 확인 버튼은 없습니다.<br>· 틀린 문제는 다음 배틀에 "복습 문제"로 다시 나옵니다. 어느 자리에서 틀렸는지도 아래 목록에 남습니다.<br>· 정답률 80% 이상 초록, 60% 미만 빨강.<br>· 타이머: 곱셈은 세로셈·올림 보여주고 답 한 번에·보스 모두 7초에서 6→최소 5초, 분해만 10초에서 9→최소 8초, 나눗셈은 한 자리로 나누기가 18초에서 15→최소 13초, 두 자리로 나누기가 22초에서 19→최소 16초입니다. 여기에 더해 15스테이지(올림 암산 보스)는 2초, 18·19스테이지(두 자리 나눗셈에서 몫과 뺀 값을 모두 쓰는 판)는 5초를 더 줍니다. 아이가 실제로 해 보고 빠듯했던 판만 따로 늘린 값입니다. 나눗셈이 긴 것은 한 문제에 입력이 3~5번이기 때문입니다. 시간은 빈칸 하나가 아니라 문제 하나 전체에 걸립니다 (시간 초과는 데미지가 없지만 문제가 새로 바뀝니다. 못 푼 문제는 복습으로 다시 나옵니다. 체력이 깎이는 것은 오답일 때뿐입니다).<br>· 보스는 구역 4판을 전부 별 3개로 깨야 열리고, 보스전도 무실수(별 3개)로 이겨야 친구 구출.<br>· 시간초과가 많고 오답이 적으면 "알지만 느린" 상태 — 유창성 연습 단계입니다.<br>· 용돈: 승리 +1원(보스 +5원, 재도전 0원). <b>퀘스트 세 개는 지금 인정 구역에 따라 금액이 달라집니다</b> — 1구역 30원, 2구역 50원, 3구역 70원, 4구역 90원이고 세 퀘스트가 모두 같은 금액입니다. 매일 다 채우면 주당 450원(1구역)에서 1350원(4구역)이고, 숫자숲까지 합치면 주당 최대 2700원입니다. 퀘스트가 지금 구역에서만 세어지므로 어려운 구역을 하는 아이가 더 받습니다. 금액은 이긴 판의 구역이 아니라 지금 인정 구역으로 정해지며, 퀘스트 카드에 달성 전부터 적혀 있는 금액과 실제 지급이 같습니다.<br>· <b>별 ⭐⭐⭐ 1회성 보너스</b>: 일반 스테이지를 처음 별 세 개로 깨면 300원, 보스는 1000원입니다. 스테이지마다 한 번뿐이고, 전부 별 세 개로 깨면 이 게임에서만 8800원입니다. 반복해서 벌 수 없는 대신 액수가 크므로 지급 계획을 세워 두십시오. 별을 초기화하면 보너스도 함께 다시 열립니다.<br>· <b>퀘스트는 지금 구역과 그 바로 앞 구역에서 이긴 것만 셉니다.</b> 세 퀘스트 모두 같은 기준입니다. 재도전 승리는 용돈이 0원이지만 퀘스트 횟수에는 들어가서, 18스테이지까지 간 아이가 1스테이지를 세 번 반복해 하루 퀘스트를 채울 수 있었습니다. 기준 구역은 "마지막으로 깬 구역"이 아니라 지금 열려 있는 다음 스테이지의 구역입니다 — 구역 보스를 막 깬 날 새로 열린 첫 판이 인정 밖이 되면 그날 제일 열심히 한 판이 안 세어지기 때문입니다. 퀘스트 카드 위에 인정되는 구역이 적혀 있고, 인정 안 되는 판을 이기면 승리 화면에도 한 줄 나옵니다. 별 세 개 보너스에는 이 제한이 없습니다.<br>· 용돈은 더하기 빼기와 따로 쌓입니다. 게임마다 저금통이 따로 있습니다.<br>· 용돈을 지급하셨으면 "용돈 지급 완료"를 눌러 0원으로 초기화하세요 (두 번 눌러 확인).</p>';
     $('p-body').innerHTML=html;
+    window.MulDailyUI.parent($('p-body'));
     var pb=$('btn-payout'), armed=false, armT=null;
     pb.addEventListener('click',function(){
       if(!armed){armed=true;pb.textContent='정말요? 한 번 더!';armT=setTimeout(function(){armed=false;pb.textContent='용돈 지급 완료';},3000);return;}
@@ -1517,9 +1561,13 @@ if(typeof document!=='undefined'){(function(){
   /* 홈(포털) 버튼: 정적 호스팅에서 상위 폴더의 포털로 이동. 아티팩트/로컬 파일에서는 숨김 */
   if(/claude|^file$/.test(location.hostname||'file')||location.protocol==='file:'){$('btn-portal').style.display='none';}
   load(); dailyCheck(); renderHome();
+  window.MulDailyHooks={show:show,home:renderHome,stop:stopTimer};
 })();}
 
 </script>
+<script src="daily.js"></script>
+<script src="daily-ui.js"></script>
+<script>window.MulDailyUI.init(window.MulDailyHooks);</script>
 
 </body>
 </html>

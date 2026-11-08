@@ -32,6 +32,8 @@ const ASSETS = [
   './math/index.html',
   './mul/',
   './mul/index.html',
+  './mul/daily.js',
+  './mul/daily-ui.js',
   // 부모님 안내(npm run guide가 지침서에서 만든다). 목록은 tests/guide.test.js가 생성물과 대조한다.
   './guide/',
   './guide/index.html',

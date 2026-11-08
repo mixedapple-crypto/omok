@@ -6,6 +6,8 @@
  *
  * math 게임과 같은 방식으로 <script> 본문을 꺼내 돌린다 — document가 없는 Node에서는
  * DOM 블록이 통째로 건너뛰어지도록 원본이 `typeof document!=='undefined'`로 감싸여 있다.
+ * 매일 곱셈의 두 자리 × 두 자리 생성·시험·오답 풀이 규칙은 별도 엔진을 쓰므로
+ * tests/mul-daily.test.js에서 검사한다. 이 파일은 기존 모험의 입력 순서를 계속 고정한다.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
