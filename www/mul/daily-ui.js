@@ -25,6 +25,12 @@
     var date=D.dateKey();
     active=records[date];
     if(!active){active=D.create(date,$('daily-mode').value);records[date]=active;D.start(active);save();}
+    // 이전 버전의 두 자리 복습은 십의 자리부터였다. 진행 중인 첫 단계만 새 순서로 다시 푼다.
+    var old=D.current(active);
+    if(!old.stepOrder){
+      if(!active.finished)old.questions.forEach(function(q,i){if(q.b>=10&&old.review[i]===1)old.review[i]=0;});
+      old.stepOrder='ones-first';save();
+    }
     input='';reviewing=false;render();hooks.show('scr-daily');
   }
   function showEntry(visible){$('daily-entry').hidden=!visible;$('daily-pad').hidden=!visible;}
@@ -36,8 +42,10 @@
     if(!r.graded){
       showEntry(true);
       $('daily-progress').textContent=(r.answers.length+1)+' / 10문제 · 10문제를 모두 풀면 채점해요';
-      $('daily-help').textContent='암산해서 주황색 빈칸에 답을 넣자. 자릿수가 차면 다음 문제로 넘어가요.';
-      problem(r.questions[r.answers.length]);return;
+      var q=r.questions[r.answers.length],phase=(r.pending||[]).length;
+      $('daily-help').textContent=q.b<10?'암산해서 주황색 빈칸에 답을 넣자. 자릿수가 차면 다음 문제로 넘어가요.':
+        ['① 일의 자리: '+q.a+' × '+(q.b%10),'② 십의 자리: '+q.a+' × '+Math.floor(q.b/10)+' (끝의 0은 빼고)','③ 입력한 두 부분곱을 자리 맞춰 합산하자'][phase];
+      problem(q,q.b<10?undefined:phase,q.b<10?null:(r.pending||[]));return;
     }
     $('daily-progress').textContent=r.score+'점 · 통과 기준 '+D.TARGETS[n-1]+'점';
     if(reviewing&&!D.reviewDone(r)){
@@ -49,9 +57,10 @@
     }
     showEntry(false);$('daily-grid').textContent='';inputCell=null;
     r.questions.forEach(function(q,i){
-      var row=document.createElement('div'),correct=q.ans===r.answers[i];
+      var row=document.createElement('div'),correct=D.correct(r,i);
       row.className='daily-result';
       row.textContent=(correct?'○ ':'△ ')+(i+1)+'. '+q.a+' × '+q.b+' = '+r.answers[i]+(correct?'':' · 정답 '+q.ans);
+      if(r.parts&&r.parts[i])row.textContent+=' · 입력한 부분곱: '+r.parts[i][0]+' + '+r.parts[i][1]+' × 10';
       $('daily-results').appendChild(row);
     });
     if(!D.reviewDone(r)){
@@ -66,7 +75,7 @@
       $('daily-next').textContent=(n+1)+'라운드 시작 · 통과 기준 90점';
     }
   }
-  function problem(q,step){
+  function problem(q,step,entered){
     // 모험과 같은 그리기 함수와 CSS를 쓴다. 숫자는 자리별 44px 열, 입력칸은 그 열에 걸친다.
     var g=$('daily-grid'),v=hooks.grid,end=q.b<10?4:5;
     g.textContent='';g.style.gridTemplateColumns='repeat('+end+', 44px)';
@@ -76,10 +85,10 @@
     if(step===undefined){
       inputCell=v.blank(g,5,2,end);
     }else{
-      // 기존 분해 판처럼 십의 자리 곱을 위에, 일의 자리 곱을 아래에 두고 마지막에 더한다.
+      // 두 자리 곱셈은 일의 자리 부분곱 → 십의 자리 부분곱 → 합산 순서다.
       D.steps(q).forEach(function(st,i){
-        var row=[5,6,8][i],last=q.b<10&&i===0?end-1:end;
-        if(i<step)v.digits(g,row,last,st.value,'fresh');
+        var row=[5,6,8][i],shift=q.b<10?i===0:i===1,last=shift?end-1:end;
+        if(i<step)v.digits(g,row,last,entered?entered[i]:st.value,entered?'':'fresh');
         else{
           var cell=v.blank(g,row,last-String(st.value).length+1,last);
           if(i===step)inputCell=cell;
@@ -92,7 +101,10 @@
   }
   function expected(){
     var r=D.current(active);
-    if(!r.graded)return r.questions[r.answers.length].ans;
+    if(!r.graded){
+      var q=r.questions[r.answers.length];
+      return q.b<10?q.ans:D.steps(q)[(r.pending||[]).length].value;
+    }
     var i=D.wrong(r).find(function(index){return (r.review[index]||0)<D.steps(r.questions[index]).length;});
     return D.steps(r.questions[i])[r.review[i]||0].value;
   }

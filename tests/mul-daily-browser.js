@@ -20,10 +20,25 @@ async function begin(mode){
   await page.evaluate(()=>localStorage.removeItem('mul-daily-v1'));await page.reload();
   await page.selectOption('#daily-mode',mode);await page.click('#daily-open');
 }
+async function answerQuestion(q,correct=true){
+  const values=q.b<10?[q.ans]:await page.evaluate(q=>window.MulDaily.steps(q).map(st=>st.value),q);
+  const before=(await state()).rounds.at(-1).answers.length;
+  if(q.b>=10)assert.equal(await page.locator('#daily-grid .vblank').count(),3);
+  for(let k=0;k<values.length;k++){
+    await type(correct?values[k]:'0'.repeat(String(values[k]).length));
+    if(k<values.length-1){
+      assert.equal((await state()).rounds.at(-1).answers.length,before);
+      assert.equal(await page.locator('#daily-grid .vblank').count(),2-k);
+      assert.equal(await page.locator('#daily-grid .vblank.on').count(),1);
+      assert.equal(await page.locator('#daily-results').textContent(),'');
+      assert.equal(await page.locator('#daily-feedback').textContent(),'');
+    }
+  }
+}
 async function round(correct){
   const d=await state(),r=d.rounds.at(-1);
   for(let i=r.answers.length;i<10;i++){
-    const q=r.questions[i];await type(i<correct?q.ans:String(q.ans).replace(/./g,'0'));
+    const q=r.questions[i];await answerQuestion(q,i<correct);
     if(i<9){
       assert.equal(await page.locator('#daily-results').textContent(),'');
       assert(!/\d+점|정답 \d/.test(await page.locator('#daily-progress').textContent()));
@@ -52,7 +67,7 @@ try{
   bossGrid=await gridShape('#q-grid');
   await page.screenshot({path:'_workspace/screenshots/original-boss-input.png',fullPage:true});
   await page.click('#btn-flee');
-  await begin('mixed');
+  await begin('one');
   const initial=await state();
   // 모험처럼 제출 버튼 없이 격자 빈칸에 입력하고 자릿수가 차면 넘어간다.
   assert.equal(await page.locator('[data-daily-key="submit"]').count(),0);
@@ -60,7 +75,7 @@ try{
   await page.keyboard.press('Enter');assert.equal((await state()).rounds[0].answers.length,0);
   await page.click('[data-daily-key="1"]');await page.click('[data-daily-key="del"]');
   assert.equal(await page.locator('#daily-answer').textContent(),'');
-  await type(initial.rounds[0].questions[0].ans);await page.reload();await page.click('#daily-open');
+  await answerQuestion(initial.rounds[0].questions[0]);await page.reload();await page.click('#daily-open');
   assert.equal((await state()).rounds[0].answers.length,1);
   await page.screenshot({path:'_workspace/screenshots/daily-exam-phone.png',fullPage:true});
   const rect=await page.locator('[data-daily-key="1"]').boundingBox();assert(rect.width>=44&&rect.height>=44);
@@ -78,6 +93,10 @@ try{
   await page.screenshot({path:'_workspace/screenshots/daily-parent-phone.png',fullPage:true});
   await page.reload();assert((await page.locator('#daily-status').textContent()).includes('확인 완료'));
   console.log('PASS: 390×844 숫자판·키보드·새로고침·10문제 후 채점·부모 관문·확인 저장·44px 터치');
+
+  await begin('mixed');await round(10);
+  assert.equal((await state()).passed,true);
+  console.log('PASS: 섞기 10문제에서 한 자리 답 5회·세 칸 입력 5회 처리');
 
   await begin('one');
   const dailyGrid=await gridShape('#daily-grid');assert.deepEqual(dailyGrid,bossGrid);
@@ -104,6 +123,24 @@ try{
   assert.equal((await state()).passed,true);assert.equal((await state()).rounds.length,2);
   console.log('PASS: 1R 90점 실패·오답 단계 재입력·풀이 저장·2R 90점 성공');
 
+  await begin('two');
+  const partialQ=(await state()).rounds[0].questions[0];
+  const parts=await page.evaluate(q=>window.MulDaily.steps(q).map(st=>st.value),partialQ);
+  await type(parts[0]);await page.reload();await page.click('#daily-open');
+  assert.equal((await state()).rounds[0].pending.length,1);
+  assert.equal(await page.locator('#daily-grid .vblank').count(),2);
+  const alignment=await page.locator('#daily-grid').evaluate(g=>{
+    const previous=[...g.children].filter(c=>c.style.gridRow==='5');
+    const right=Math.max(...previous.map(c=>c.getBoundingClientRect().right));
+    return right-g.querySelector('.on').getBoundingClientRect().right;
+  });
+  assert.equal(alignment,44);
+  await page.screenshot({path:'_workspace/screenshots/daily-tens-input-phone.png',fullPage:true});
+  await type(parts[1]);assert.equal((await state()).rounds[0].answers.length,0);
+  await type(parts[2]);assert.equal((await state()).rounds[0].answers.length,1);
+  await page.screenshot({path:'_workspace/screenshots/daily-three-inputs-phone.png',fullPage:true});
+  console.log('PASS: 두 자리×두 자리 시험은 일의 자리→십의 자리→합산 세 칸, 부분곱 입력 중 새로고침 복원');
+
   for(const last of [8,9]){
     await begin('two');await round(8);await review();await page.click('#daily-next');
     await round(8);await review();await page.click('#daily-next');await round(last);await review();
@@ -120,7 +157,7 @@ try{
   await page.setViewportSize({width:768,height:1024});await page.click('#daily-open');
   await page.screenshot({path:'_workspace/screenshots/daily-tablet.png',fullPage:true});
   await page.clock.install({time:new Date('2026-11-08T23:59:00')});
-  await begin('one');await type('0'.repeat(String((await state()).rounds[0].questions[0].ans).length));
+  await begin('one');await answerQuestion((await state()).rounds[0].questions[0],false);
   await page.clock.setFixedTime(new Date('2026-11-09T00:01:00'));
   await page.click('#daily-home');await page.click('#daily-open');
   assert.equal((await state()).date,'2026-11-09');

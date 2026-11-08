@@ -26,21 +26,32 @@
   function start(day,random){
     var prev=current(day);
     if(day.finished||day.rounds.length>=3||(prev&&(!prev.graded||!reviewDone(prev))))return false;
-    day.rounds.push({questions:questions(day.mode,random),answers:[],graded:false,score:null,review:{}});
+    day.rounds.push({questions:questions(day.mode,random),answers:[],parts:{},pending:[],stepOrder:'ones-first',graded:false,score:null,review:{}});
     return true;
   }
   function submit(day,value){
     var r=current(day);
     if(!r||r.graded||day.finished||!/^\d{1,4}$/.test(String(value)))return false;
+    var q=r.questions[r.answers.length];
+    if(q.b>=10){
+      if(!r.parts)r.parts={};if(!r.pending)r.pending=[];
+      r.pending.push(Number(value));
+      if(r.pending.length<3)return true;
+      r.parts[r.answers.length]=r.pending;r.pending=[];
+    }
     r.answers.push(Number(value));
     if(r.answers.length===COUNT){
       r.graded=true;
-      r.score=r.questions.reduce(function(sum,q,i){return sum+(q.ans===r.answers[i]?10:0);},0);
+      r.score=r.questions.reduce(function(sum,q,i){return sum+(correct(r,i)?10:0);},0);
       settle(day);
     }
     return true;
   }
-  function wrong(r){return r.questions.map(function(q,i){return i;}).filter(function(i){return r.answers[i]!==r.questions[i].ans;});}
+  function correct(r,i){
+    var q=r.questions[i],parts=r.parts&&r.parts[i];
+    return r.answers[i]===q.ans&&(!parts||steps(q).every(function(st,k){return parts[k]===st.value;}));
+  }
+  function wrong(r){return r.questions.map(function(q,i){return i;}).filter(function(i){return !correct(r,i);});}
   function steps(q){
     var tens=Math.floor(q.a/10),ones=q.a%10;
     if(q.b<10)return [
@@ -48,11 +59,11 @@
       {label:'일의 자리: '+ones+' × '+q.b,value:ones*q.b},
       {label:'두 값을 자리 맞춰 더하기: '+(tens*q.b*10)+' + '+(ones*q.b),value:q.ans}
     ];
-    var bt=Math.floor(q.b/10)*10,bu=q.b%10;
+    var bt=Math.floor(q.b/10),bu=q.b%10;
     return [
-      {label:'곱하는 수를 나누자: '+q.b+' = '+bt+' + '+bu+' · 먼저 '+q.a+' × '+bt,value:q.a*bt},
-      {label:'남은 일의 자리: '+q.a+' × '+bu,value:q.a*bu},
-      {label:'두 곱을 더하기: '+(q.a*bt)+' + '+(q.a*bu),value:q.ans}
+      {label:'먼저 일의 자리: '+q.a+' × '+bu,value:q.a*bu},
+      {label:'다음 십의 자리: '+q.a+' × '+bt+' (끝의 0은 빼고)',value:q.a*bt},
+      {label:'두 곱을 자리 맞춰 더하기: '+(q.a*bu)+' + '+(q.a*bt*10),value:q.ans}
     ];
   }
   function reviewDone(r){return wrong(r).every(function(i){return (r.review[i]||0)>=steps(r.questions[i]).length;});}
@@ -74,7 +85,7 @@
     day.confirmedAt=at;return true;
   }
   var api={COUNT:COUNT,TARGETS:TARGETS,dateKey:dateKey,create:create,start:start,current:current,
-    submit:submit,wrong:wrong,steps:steps,reviewDone:reviewDone,review:review,confirm:confirm};
+    submit:submit,correct:correct,wrong:wrong,steps:steps,reviewDone:reviewDone,review:review,confirm:confirm};
   if(typeof module!=='undefined')module.exports=api;
   else root.MulDaily=api;
 })(typeof window!=='undefined'?window:globalThis);

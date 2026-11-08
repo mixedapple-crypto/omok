@@ -10,7 +10,12 @@ function day(mode='mixed'){const d=D.create('2026-11-08',mode);D.start(d,random)
 function answer(d,correct){
   const r=D.current(d);
   for(let i=0;i<10;i++){
-    assert.equal(D.submit(d,i<correct?r.questions[i].ans:0),true);
+    const q=r.questions[i];
+    const values=q.b<10?[q.ans]:D.steps(q).map(st=>st.value);
+    for(let k=0;k<values.length;k++){
+      assert.equal(D.submit(d,i<correct?values[k]:0),true);
+      if(k<values.length-1){assert.equal(r.answers.length,i);assert.equal(r.graded,false);}
+    }
     if(i<9){assert.equal(r.score,null);assert.equal(r.graded,false);}
   }
   assert.equal(r.score,correct*10);
@@ -36,11 +41,25 @@ for(const mode of ['one','two','mixed']){
       const steps=D.steps(q);
       assert.equal(steps.length,3);
       assert.equal(steps[2].value,q.ans);
-      assert.equal((q.b<10?steps[0].value*10:steps[0].value)+steps[1].value,q.ans);
+      assert.equal(q.b<10?steps[0].value*10+steps[1].value:steps[0].value+steps[1].value*10,q.ans);
     }
   }
 }
 console.log('PASS: 문제 유형별 범위·10문제 중복 없음·분해 풀이 계산');
+{
+  let d=day('two'),r=D.current(d);r.questions[0]={a:42,b:23,ans:966};
+  assert.deepEqual(D.steps(r.questions[0]).map(st=>st.value),[126,84,966]);
+  D.submit(d,125);assert.equal(r.answers.length,0);assert.equal(r.score,null);
+  d=JSON.parse(JSON.stringify(d));r=D.current(d);assert.deepEqual(r.pending,[125]);
+  D.submit(d,84);assert.equal(r.answers.length,0);
+  D.submit(d,966);assert.equal(r.answers.length,1);assert.equal(D.correct(r,0),false);
+  assert.deepEqual(r.parts[0],[125,84,966]);assert.equal(r.graded,false);
+  for(let i=1;i<10;i++)for(const st of D.steps(r.questions[i]))D.submit(d,st.value);
+  assert.equal(r.score,90);assert.deepEqual(D.wrong(r),[0]);
+  // 이미 끝난 구버전 답안은 그대로 읽는다.
+  assert.equal(D.correct({questions:[{a:42,b:23,ans:966}],answers:[966]},0),true);
+}
+console.log('PASS: 일의 자리→십의 자리→합산 세 입력·중간 저장·부분곱 오답 채점');
 {
   const d=day();assert.equal(D.submit(d,''),false);assert.equal(D.submit(d,'1e2'),false);
   assert.equal(D.submit(d,'-1'),false);assert.equal(D.confirm(d,'now'),false);
