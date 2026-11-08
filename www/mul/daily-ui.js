@@ -1,7 +1,7 @@
 /* 기존 게임과 독립된 일일 시험 저장. 부모 화면은 기존 관문을 통과한 뒤에만 그린다. */
 (function(){
   'use strict';
-  var D=window.MulDaily, KEY='mul-daily-v1', records={}, active=null, input='', reviewing=false, hooks;
+  var D=window.MulDaily, KEY='mul-daily-v1', records={}, active=null, input='', reviewing=false, hooks, inputCell;
   var $=function(id){return document.getElementById(id);};
   function read(){
     try{var data=JSON.parse(localStorage.getItem(KEY)||'{}');if(data&&typeof data==='object'&&!Array.isArray(data))records=data;}catch(e){}
@@ -36,7 +36,7 @@
     if(!r.graded){
       showEntry(true);
       $('daily-progress').textContent=(r.answers.length+1)+' / 10문제 · 10문제를 모두 풀면 채점해요';
-      $('daily-help').textContent='암산해서 답을 한 번에 넣자. 자릿수가 차면 제출돼요. 짧은 답은 제출을 눌러요.';
+      $('daily-help').textContent='암산해서 주황색 빈칸에 답을 넣자. 자릿수가 차면 다음 문제로 넘어가요.';
       problem(r.questions[r.answers.length]);return;
     }
     $('daily-progress').textContent=r.score+'점 · 통과 기준 '+D.TARGETS[n-1]+'점';
@@ -45,9 +45,9 @@
       var i=D.wrong(r).find(function(index){return (r.review[index]||0)<D.steps(r.questions[index]).length;});
       var step=r.review[i]||0;
       $('daily-help').textContent='오답 '+(i+1)+'번 · '+(step+1)+' / 3단계 · '+D.steps(r.questions[i])[step].label;
-      problem(r.questions[i]);return;
+      problem(r.questions[i],step);return;
     }
-    showEntry(false);$('daily-problem').textContent='';
+    showEntry(false);$('daily-grid').textContent='';inputCell=null;
     r.questions.forEach(function(q,i){
       var row=document.createElement('div'),correct=q.ans===r.answers[i];
       row.className='daily-result';
@@ -66,10 +66,29 @@
       $('daily-next').textContent=(n+1)+'라운드 시작 · 통과 기준 90점';
     }
   }
-  function problem(q){
-    // 기존 암산 보스처럼 세로로 보여 주고 답 전체를 받는다. 시험 중에는 올림·부분곱을 보이지 않는다.
-    $('daily-problem').textContent=q.a+'\n× '+q.b+'\n────';
-    $('daily-answer').textContent=input||'?';
+  function problem(q,step){
+    // 모험과 같은 그리기 함수와 CSS를 쓴다. 숫자는 자리별 44px 열, 입력칸은 그 열에 걸친다.
+    var g=$('daily-grid'),v=hooks.grid,end=q.b<10?4:5;
+    g.textContent='';g.style.gridTemplateColumns='repeat('+end+', 44px)';
+    v.cell(g,1,end-1,'');
+    v.digits(g,2,end,q.a);v.cell(g,3,2,'×','op');v.digits(g,3,end,q.b);
+    v.rule(g,4,2,end);
+    if(step===undefined){
+      inputCell=v.blank(g,5,2,end);
+    }else{
+      // 기존 분해 판처럼 십의 자리 곱을 위에, 일의 자리 곱을 아래에 두고 마지막에 더한다.
+      D.steps(q).forEach(function(st,i){
+        var row=[5,6,8][i],last=q.b<10&&i===0?end-1:end;
+        if(i<step)v.digits(g,row,last,st.value,'fresh');
+        else{
+          var cell=v.blank(g,row,last-String(st.value).length+1,last);
+          if(i===step)inputCell=cell;
+        }
+      });
+      v.rule(g,7,2,end);
+    }
+    inputCell.id='daily-answer';inputCell.setAttribute('aria-label','입력한 답');
+    inputCell.classList.add('on');inputCell.textContent=input;
   }
   function expected(){
     var r=D.current(active);
@@ -90,9 +109,8 @@
   function key(k){
     if(!active||!$('scr-daily').classList.contains('active')||$('daily-entry').hidden)return;
     if(k==='del')input=input.slice(0,-1);
-    else if(k==='submit'){send();return;}
     else if(/^\d$/.test(k)&&input.length<4)input+=k;
-    $('daily-answer').textContent=input||'?';
+    inputCell.textContent=input;
     if(k!=='del'&&input.length===String(expected()).length)send();
   }
   function parent(container){
@@ -128,8 +146,8 @@
     $('daily-pad').addEventListener('click',function(e){var k=e.target.getAttribute('data-daily-key');if(k)key(k);});
     document.addEventListener('keydown',function(e){
       if(!$('scr-daily').classList.contains('active')||e.target.tagName==='SELECT')return;
-      if(/^\d$/.test(e.key)||e.key==='Backspace'||e.key==='Enter'){
-        e.preventDefault();if(!e.repeat)key(e.key==='Backspace'?'del':e.key==='Enter'?'submit':e.key);
+      if(/^\d$/.test(e.key)||e.key==='Backspace'){
+        e.preventDefault();if(!e.repeat)key(e.key==='Backspace'?'del':e.key);
       }
     });
     document.addEventListener('visibilitychange',function(){if(!document.hidden&&!active)refresh();});

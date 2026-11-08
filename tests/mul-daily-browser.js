@@ -41,13 +41,25 @@ async function review(){
     for(const val of values)await type(val);
   }
 }
+async function gridShape(selector){
+  return page.locator(selector).evaluate(g=>({columns:g.style.gridTemplateColumns,cells:[...g.children].map(c=>[c.className,c.style.gridRow,c.style.gridColumn])}));
+}
+let bossGrid;
 try{
+  await page.goto(base+'/mul/');
+  await page.evaluate(()=>localStorage.setItem('mulforest-v1',JSON.stringify({v:2,cleared:5,sound:false})));
+  await page.reload();await page.locator('#map .node').nth(4).click();
+  bossGrid=await gridShape('#q-grid');
+  await page.screenshot({path:'_workspace/screenshots/original-boss-input.png',fullPage:true});
+  await page.click('#btn-flee');
   await begin('mixed');
   const initial=await state();
-  // 숫자판·삭제·빈 제출·짧은 답 제출과 새로고침 복원.
-  await page.click('[data-daily-key="submit"]');assert.equal((await state()).rounds[0].answers.length,0);
+  // 모험처럼 제출 버튼 없이 격자 빈칸에 입력하고 자릿수가 차면 넘어간다.
+  assert.equal(await page.locator('[data-daily-key="submit"]').count(),0);
+  assert.equal(await page.locator('#daily-grid .vblank.on').count(),1);
+  await page.keyboard.press('Enter');assert.equal((await state()).rounds[0].answers.length,0);
   await page.click('[data-daily-key="1"]');await page.click('[data-daily-key="del"]');
-  assert.equal(await page.locator('#daily-answer').textContent(),'?');
+  assert.equal(await page.locator('#daily-answer').textContent(),'');
   await type(initial.rounds[0].questions[0].ans);await page.reload();await page.click('#daily-open');
   assert.equal((await state()).rounds[0].answers.length,1);
   await page.screenshot({path:'_workspace/screenshots/daily-exam-phone.png',fullPage:true});
@@ -67,15 +79,25 @@ try{
   await page.reload();assert((await page.locator('#daily-status').textContent()).includes('확인 완료'));
   console.log('PASS: 390×844 숫자판·키보드·새로고침·10문제 후 채점·부모 관문·확인 저장·44px 터치');
 
-  await begin('one');await round(9);assert.equal((await state()).finished,false);
+  await begin('one');
+  const dailyGrid=await gridShape('#daily-grid');assert.deepEqual(dailyGrid,bossGrid);
+  await type('1');await page.keyboard.press('Enter');
+  assert.equal((await state()).rounds[0].answers.length,0);await page.keyboard.press('Backspace');
+  console.log('PASS: 기존 암산 보스와 동일한 격자 열·숫자 위치·빈칸 CSS·자동 입력, Enter 제출 없음');
+  await round(9);assert.equal((await state()).finished,false);
   assert.equal(await page.locator('#daily-next').isVisible(),false);
   await page.click('#daily-review');
   const r=(await state()).rounds[0],i=r.answers.findIndex((a,i)=>a!==r.questions[i].ans);
-  await type('0');await page.keyboard.press('Enter');
+  const wrongSteps=await page.evaluate(q=>window.MulDaily.steps(q),r.questions[i]);
+  await type('0'.repeat(String(wrongSteps[0].value).length));
   assert((await page.locator('#daily-feedback').textContent()).includes('생각'));
   await page.screenshot({path:'_workspace/screenshots/daily-review-phone.png',fullPage:true});
   const steps=await page.evaluate(q=>window.MulDaily.steps(q),r.questions[i]);
-  await type(steps[0].value);await page.reload();await page.click('#daily-open');
+  assert.equal(await page.locator('#daily-grid .vblank').count(),3);
+  await type(steps[0].value);
+  assert.equal(await page.locator('#daily-grid .vblank').count(),2);
+  assert.equal(await page.locator('#daily-grid .fresh').allTextContents().then(a=>a.join('')),String(steps[0].value));
+  await page.reload();await page.click('#daily-open');
   assert.equal((await state()).rounds[0].review[i],1);
   await page.click('#daily-review');await type(steps[1].value);await type(steps[2].value);
   await page.click('#daily-next');await round(9);await review();
@@ -98,7 +120,7 @@ try{
   await page.setViewportSize({width:768,height:1024});await page.click('#daily-open');
   await page.screenshot({path:'_workspace/screenshots/daily-tablet.png',fullPage:true});
   await page.clock.install({time:new Date('2026-11-08T23:59:00')});
-  await begin('one');await type('0');await page.keyboard.press('Enter');
+  await begin('one');await type('0'.repeat(String((await state()).rounds[0].questions[0].ans).length));
   await page.clock.setFixedTime(new Date('2026-11-09T00:01:00'));
   await page.click('#daily-home');await page.click('#daily-open');
   assert.equal((await state()).date,'2026-11-09');
