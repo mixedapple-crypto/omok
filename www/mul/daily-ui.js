@@ -17,14 +17,13 @@
       (day.confirmedAt?'✅ 오늘 학습 · 부모님 확인 완료':'📋 오늘 학습 끝! 부모님께 확인받자'):
       (day.rounds.length+'라운드 이어서 풀기');
     $('daily-open').textContent=day&&day.finished?'오늘 결과 보기':'매일 곱셈 풀기 ➜';
-    $('daily-mode').disabled=!!day;
-    if(day)$('daily-mode').value=day.mode;
   }
   function open(){
     hooks.stop();read();
     var date=D.dateKey();
     active=records[date];
-    if(!active){active=D.create(date,$('daily-mode').value);records[date]=active;D.start(active);save();}
+    if(!active){active=D.create(date,'one');records[date]=active;D.start(active);save();}
+    if(!active.finished&&D.useOneDigit(active))save();
     // 이전 버전의 두 자리 복습은 십의 자리부터였다. 진행 중인 첫 단계만 새 순서로 다시 푼다.
     var old=D.current(active);
     if(!old.stepOrder){

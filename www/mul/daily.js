@@ -10,22 +10,36 @@
     var rng=random||Math.random, list=[], seen={};
     function ri(lo,hi){return lo+Math.floor(rng()*(hi-lo+1));}
     while(list.length<COUNT){
-      var wide=mode==='two'||(mode==='mixed'&&list.length>=5);
-      var a=ri(10,99), b=wide?ri(10,99):ri(2,9), key=a+'x'+b;
+      var a=ri(10,99), b=ri(2,9), key=a+'x'+b;
       if(seen[key])continue;
       seen[key]=true;list.push({a:a,b:b,ans:a*b});
     }
-    // 섞기에서도 두 유형을 정확히 다섯 문제씩 낸다.
     for(var i=list.length-1;i>0;i--){var j=ri(0,i),tmp=list[i];list[i]=list[j];list[j]=tmp;}
     return list;
   }
   function create(date,mode){
-    return {date:date,mode:mode,rounds:[],finished:false,passed:false,confirmedAt:null};
+    return {date:date,mode:'one',rounds:[],finished:false,passed:false,confirmedAt:null};
   }
   function current(day){return day.rounds[day.rounds.length-1];}
+  function useOneDigit(day,random){
+    var changed=day.mode!=='one';day.mode='one';
+    var r=current(day);
+    if(!r||r.graded)return changed;
+    var seen={};
+    r.questions.forEach(function(q,i){if(i<r.answers.length||q.b<10)seen[q.a+'x'+q.b]=true;});
+    r.questions.forEach(function(q,i){
+      if(i<r.answers.length||q.b<10)return;
+      var replacement;
+      do{replacement=questions('one',random)[0];}while(seen[replacement.a+'x'+replacement.b]);
+      r.questions[i]=replacement;seen[replacement.a+'x'+replacement.b]=true;changed=true;
+      if(i===r.answers.length)r.pending=[];
+    });
+    return changed;
+  }
   function start(day,random){
     var prev=current(day);
     if(day.finished||day.rounds.length>=3||(prev&&(!prev.graded||!reviewDone(prev))))return false;
+    day.mode='one';
     day.rounds.push({questions:questions(day.mode,random),answers:[],parts:{},pending:[],stepOrder:'ones-first',graded:false,score:null,review:{}});
     return true;
   }
@@ -85,7 +99,7 @@
     day.confirmedAt=at;return true;
   }
   var api={COUNT:COUNT,TARGETS:TARGETS,dateKey:dateKey,create:create,start:start,current:current,
-    submit:submit,correct:correct,wrong:wrong,steps:steps,reviewDone:reviewDone,review:review,confirm:confirm};
+    useOneDigit:useOneDigit,submit:submit,correct:correct,wrong:wrong,steps:steps,reviewDone:reviewDone,review:review,confirm:confirm};
   if(typeof module!=='undefined')module.exports=api;
   else root.MulDaily=api;
 })(typeof window!=='undefined'?window:globalThis);

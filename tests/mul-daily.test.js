@@ -34,7 +34,8 @@ for(const mode of ['one','two','mixed']){
     const r=D.current(day(mode)),qs=r.questions;
     assert.equal(qs.length,10);
     assert.equal(new Set(qs.map(q=>q.a+'x'+q.b)).size,10);
-    assert.equal(qs.filter(q=>q.b>=10).length,mode==='one'?0:mode==='two'?10:5);
+    assert.equal(qs.filter(q=>q.b>=10).length,0);
+    assert.equal(D.create('2026-11-08',mode).mode,'one');
     for(const q of qs){
       assert(q.a>=10&&q.a<=99&&q.b>=2&&q.b<=99);
       assert.equal(q.ans,q.a*q.b);
@@ -45,7 +46,17 @@ for(const mode of ['one','two','mixed']){
     }
   }
 }
-console.log('PASS: 문제 유형별 범위·10문제 중복 없음·분해 풀이 계산');
+console.log('PASS: 이전 유형 인자와 무관하게 두 자리×한 자리만 10문제 출제');
+{
+  const d=day(),r=D.current(d);d.mode='two';
+  r.questions[0]={a:42,b:23,ans:966};r.questions[1]={a:53,b:21,ans:1113};
+  r.answers=[966];r.parts[0]=[126,84,966];r.pending=[53];
+  assert.equal(D.useOneDigit(d,random),true);assert.equal(d.mode,'one');
+  assert.equal(r.questions[0].b,23);assert.equal(r.answers[0],966);
+  assert(r.questions.slice(1).every(q=>q.b>=2&&q.b<=9));assert.deepEqual(r.pending,[]);
+  assert.equal(D.useOneDigit(d,random),false);
+}
+console.log('PASS: 진행 중 옛 문제 교체·기존 제출 답안 보존·교체는 한 번만');
 {
   let d=day('two'),r=D.current(d);r.questions[0]={a:42,b:23,ans:966};
   assert.deepEqual(D.steps(r.questions[0]).map(st=>st.value),[126,84,966]);
@@ -54,7 +65,7 @@ console.log('PASS: 문제 유형별 범위·10문제 중복 없음·분해 풀�
   D.submit(d,84);assert.equal(r.answers.length,0);
   D.submit(d,966);assert.equal(r.answers.length,1);assert.equal(D.correct(r,0),false);
   assert.deepEqual(r.parts[0],[125,84,966]);assert.equal(r.graded,false);
-  for(let i=1;i<10;i++)for(const st of D.steps(r.questions[i]))D.submit(d,st.value);
+  for(let i=1;i<10;i++)D.submit(d,r.questions[i].ans);
   assert.equal(r.score,90);assert.deepEqual(D.wrong(r),[0]);
   // 이미 끝난 구버전 답안은 그대로 읽는다.
   assert.equal(D.correct({questions:[{a:42,b:23,ans:966}],answers:[966]},0),true);

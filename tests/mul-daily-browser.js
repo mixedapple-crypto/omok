@@ -18,7 +18,8 @@ async function type(value){await page.keyboard.type(String(value));}
 async function begin(mode){
   await page.goto(base+'/mul/');
   await page.evaluate(()=>localStorage.removeItem('mul-daily-v1'));await page.reload();
-  await page.selectOption('#daily-mode',mode);await page.click('#daily-open');
+  assert.equal(await page.locator('#daily-mode').count(),0);await page.click('#daily-open');
+  assert((await state()).rounds.at(-1).questions.every(q=>q.b>=2&&q.b<=9));
 }
 async function answerQuestion(q,correct=true){
   const values=q.b<10?[q.ans]:await page.evaluate(q=>window.MulDaily.steps(q).map(st=>st.value),q);
@@ -96,7 +97,7 @@ try{
 
   await begin('mixed');await round(10);
   assert.equal((await state()).passed,true);
-  console.log('PASS: 섞기 10문제에서 한 자리 답 5회·세 칸 입력 5회 처리');
+  console.log('PASS: 문제 유형 선택 없이 두 자리×한 자리만 10문제');
 
   await begin('one');
   const dailyGrid=await gridShape('#daily-grid');assert.deepEqual(dailyGrid,bossGrid);
@@ -123,24 +124,6 @@ try{
   assert.equal((await state()).passed,true);assert.equal((await state()).rounds.length,2);
   console.log('PASS: 1R 90점 실패·오답 단계 재입력·풀이 저장·2R 90점 성공');
 
-  await begin('two');
-  const partialQ=(await state()).rounds[0].questions[0];
-  const parts=await page.evaluate(q=>window.MulDaily.steps(q).map(st=>st.value),partialQ);
-  await type(parts[0]);await page.reload();await page.click('#daily-open');
-  assert.equal((await state()).rounds[0].pending.length,1);
-  assert.equal(await page.locator('#daily-grid .vblank').count(),2);
-  const alignment=await page.locator('#daily-grid').evaluate(g=>{
-    const previous=[...g.children].filter(c=>c.style.gridRow==='5');
-    const right=Math.max(...previous.map(c=>c.getBoundingClientRect().right));
-    return right-g.querySelector('.on').getBoundingClientRect().right;
-  });
-  assert.equal(alignment,44);
-  await page.screenshot({path:'_workspace/screenshots/daily-tens-input-phone.png',fullPage:true});
-  await type(parts[1]);assert.equal((await state()).rounds[0].answers.length,0);
-  await type(parts[2]);assert.equal((await state()).rounds[0].answers.length,1);
-  await page.screenshot({path:'_workspace/screenshots/daily-three-inputs-phone.png',fullPage:true});
-  console.log('PASS: 두 자리×두 자리 시험은 일의 자리→십의 자리→합산 세 칸, 부분곱 입력 중 새로고침 복원');
-
   for(const last of [8,9]){
     await begin('two');await round(8);await review();await page.click('#daily-next');
     await round(8);await review();await page.click('#daily-next');await round(last);await review();
@@ -149,7 +132,24 @@ try{
     await page.click('#daily-home');await page.click('#daily-open');
     assert.equal((await state()).rounds.length,3);
   }
-  console.log('PASS: 두 자리 × 두 자리·3R 80점 종료·3R 90점 성공·당일 추가 시도 차단');
+  console.log('PASS: 두 자리×한 자리·3R 80점 종료·3R 90점 성공·당일 추가 시도 차단');
+
+  await page.goto(base+'/mul/');
+  await page.evaluate(()=>{
+    const D=window.MulDaily,d=D.create(D.dateKey(),'one');D.start(d);d.mode='two';
+    const r=D.current(d);r.questions[0]={a:42,b:23,ans:966};r.questions[1]={a:53,b:21,ans:1113};
+    r.answers=[966];r.parts[0]=[126,84,966];r.pending=[53];
+    localStorage.setItem('mul-daily-v1',JSON.stringify({[d.date]:d}));
+  });
+  await page.reload();await page.click('#daily-open');
+  const migrated=await state();
+  assert.equal(migrated.rounds[0].answers.length,1);
+  assert.equal(migrated.rounds[0].questions[0].b,23);
+  assert(migrated.rounds[0].questions.slice(1).every(q=>q.b<10));
+  assert.deepEqual(migrated.rounds[0].pending,[]);
+  assert.equal(await page.locator('#daily-grid .vblank').count(),1);
+  await round(10);assert.equal((await state()).passed,true);
+  console.log('PASS: 기존 제출 기록 보존·미제출 두 자리 곱셈만 한 자리 곱셈으로 교체');
 
   await page.setViewportSize({width:844,height:390});await page.click('#daily-home');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);

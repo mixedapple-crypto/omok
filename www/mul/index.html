@@ -190,7 +190,6 @@
   [hidden]{display:none!important}
   .daily-card{margin:12px 16px;padding:16px;border:2px solid var(--sea);border-radius:18px;background:var(--card);line-height:1.7}
   .daily-card h2{font-size:22px;color:var(--sea-deep)}
-  .daily-card select{width:100%;font:inherit;padding:10px;margin:8px 0;border:1px solid var(--sea);border-radius:10px;background:white;color:var(--ink)}
   .daily-action{min-height:48px;padding:10px 16px;background:var(--sea-deep);color:white;border-radius:12px;margin-top:8px;width:100%}
   #scr-daily{padding:16px;gap:10px;background:linear-gradient(var(--sky),var(--foam))}
   #daily-heading{font-size:20px;color:var(--sea-deep)}
@@ -220,8 +219,7 @@
     <div class="daily-card">
       <h2>📅 매일 곱셈</h2>
       <p id="daily-status"></p>
-      <label for="daily-mode">오늘 풀 문제</label>
-      <select id="daily-mode"><option value="mixed">두 유형 섞기 (각 5문제)</option><option value="one">두 자리 × 한 자리</option><option value="two">두 자리 × 두 자리</option></select>
+      <p>오늘 풀 문제: <b>두 자리 × 한 자리</b></p>
       <p class="note">한 라운드 10문제 · 1라운드 100점, 2·3라운드 90점이면 성공! 오답 풀이 후 부모님 확인을 받아요.</p>
       <button class="daily-action" id="daily-open">매일 곱셈 풀기 ➜</button>
     </div>
@@ -1479,7 +1477,7 @@ if(typeof document!=='undefined'){(function(){
       html+='<tr><td>'+TYPES[t]+'</td><td class="num">'+st.a+'</td><td class="num '+cls+'">'+acc+'%</td><td class="num">'+(st.to||0)+'</td></tr>';
     }
     html+='</table>';
-    html+='<p class="note">📅 매일 곱셈은 모험과 별개로 하루 한 번 진행합니다. 두 자리 × 한 자리, 두 자리 × 두 자리, 두 유형 섞기를 선택하고 매 라운드 새 문제 10개를 풉니다. 기존 모험과 같은 세로셈 격자 안 주황색 빈칸에 입력하며, 자릿수가 차면 자동으로 넘어갑니다. 두 자리 × 두 자리는 일의 자리 부분곱 → 십의 자리 부분곱(끝의 0을 빼고 한 칸 왼쪽) → 합산의 세 칸을 모두 입력하며, 세 값이 전부 맞아야 그 문제의 10점을 받습니다. 제출 버튼은 없습니다. 10문제 제출 전에는 정답을 공개하지 않습니다. 1라운드 100점, 2·3라운드 90점 이상이면 성공하며, 3라운드 뒤에는 추가 재도전이 없습니다. 틀린 문제의 분해 풀이를 마쳐야 다음 라운드나 하루 마무리로 넘어갑니다. 날짜별 기록에서 성공 여부와 관계없이 학습을 마친 날을 확인해 주세요. 날짜는 기기 기준이며 기록과 부모 확인은 이 브라우저에 저장됩니다. 기존 부모 관문을 사용하며 별도 계정 인증이나 알림은 없습니다.</p>';
+    html+='<p class="note">📅 매일 곱셈은 모험과 별개로 하루 한 번 진행합니다. 두 자리 × 한 자리만 매 라운드 새 문제 10개를 풉니다. 기존 모험과 같은 세로셈 격자 안 주황색 빈칸에 입력하며, 자릿수가 차면 자동으로 넘어갑니다. 제출 버튼은 없습니다. 10문제 제출 전에는 정답을 공개하지 않습니다. 1라운드 100점, 2·3라운드 90점 이상이면 성공하며, 3라운드 뒤에는 추가 재도전이 없습니다. 틀린 문제의 분해 풀이를 마쳐야 다음 라운드나 하루 마무리로 넘어갑니다. 날짜별 기록에서 성공 여부와 관계없이 학습을 마친 날을 확인해 주세요. 날짜는 기기 기준이며 기록과 부모 확인은 이 브라우저에 저장됩니다. 기존 부모 관문을 사용하며 별도 계정 인증이나 알림은 없습니다.</p>';
     html+='<h3 style="margin-top:18px;font-size:16px">최근 틀린 문제</h3><div class="wrong-list">';
     if(S.wrongLog.length===0)html+='아직 없어요!';
     for(i=0;i<Math.min(12,S.wrongLog.length);i++){
